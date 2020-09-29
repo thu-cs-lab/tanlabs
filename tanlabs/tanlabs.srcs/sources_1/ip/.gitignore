@@ -1,0 +1,8 @@
+*
+!.gitignore
+!*.xci
+!*.xcix
+!*.bd
+!*.prj
+!*.mem
+!*.xdc

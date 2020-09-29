@@ -1,0 +1,14 @@
+*.o
+*.elf
+*.bin
+*.coe
+*.prm
+*.cache/
+*.hw/
+*.sim/
+*.ip_user_files/
+*.runs/
+*.jou
+*.log
+*.str
+.Xil/
