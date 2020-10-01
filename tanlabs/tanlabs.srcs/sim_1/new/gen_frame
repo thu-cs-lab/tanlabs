@@ -11,11 +11,15 @@ import struct
 MAC_BROADCAST = 'ff:ff:ff:ff:ff:ff'
 MAC_TESTER = '54:57:44:32:5f:5f'
 MAC_TESTER2 = '54:57:44:32:5f:60'
+IFACE_DEFAULT_ROUTE = 3
+MAC_DEFAULT_ROUTE = '54:57:44:32:5f:61'
 
 # You may change these IP addresses.
 IP_TESTER = '10.0.0.2'
 IP_TESTER2 = '10.0.1.2'
 IP_DUT = '10.0.0.1'  # Device under test.
+IP_DUT3 = '10.0.3.1'
+IP_DEFAULT_ROUTE = '10.0.3.2'  # The IP address of the default route.
 IP_TEST_DST = '192.168.1.1'  # Forward destination. Route should exist.
 IP_TEST_DST_NO_MAC = '10.0.0.100'  # Forward destination. Route should exist. MAC address should not exist.
 IP_TEST_DST_NO_ROUTE = '254.254.254.254'  # Forward destination. Route should not exist.
@@ -43,6 +47,10 @@ write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
 # ARP reply test.
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
             ARP(op='is-at', hwsrc=MAC_TESTER, psrc=IP_TESTER, hwdst=MAC_BROADCAST, pdst=IP_DUT))
+
+# Fill the ARP cache entry of the default route.
+write_frame(IFACE_DEFAULT_ROUTE, Ether(src=MAC_DEFAULT_ROUTE, dst=MAC_BROADCAST)/
+            ARP(op='who-has', hwsrc=MAC_DEFAULT_ROUTE, psrc=IP_DEFAULT_ROUTE, hwdst=MAC_BROADCAST, pdst=IP_DUT3))
 
 # Simple IP forwarding test.
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
