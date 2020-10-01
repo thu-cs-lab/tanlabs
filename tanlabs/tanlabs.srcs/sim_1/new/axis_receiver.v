@@ -46,11 +46,13 @@ module axis_receiver
     end
 
     integer i;
+    reg [ID_WIDTH - 1:0] dest;
 
     always @ (posedge clk or posedge reset)
     begin
         if (reset)
         begin
+            dest <= 0;
         end
         else
         begin
@@ -60,6 +62,15 @@ module axis_receiver
                 begin
                     $write("Egress frame to interface #%d: ", s_dest);
                     $fwrite(fd, "%d ", s_dest);
+                    dest <= s_dest;
+                end
+                else
+                begin
+                    if (s_dest != dest)
+                    begin
+                        $display("ASSERTION FAILED: AXI-Stream dest changes during one frame.");
+                        $finish;
+                    end
                 end
                 for (i = 0; i < DATA_WIDTH / 8; i = i + 1)
                 begin
