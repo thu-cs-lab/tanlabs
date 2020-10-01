@@ -20,6 +20,7 @@ typedef struct packed
     // **They are only effective at the first beat.**
     logic [ID_WIDTH - 1:0] dest;  // egress interface
     logic drop;  // Drop this frame?
+    logic dont_touch;  // Do not touch this beat!
 
     // Drop the next frame? It is useful when you need to shrink a frame
     // (e.g., replace an IPv4 packet to an ARP request).
@@ -32,8 +33,12 @@ typedef struct packed
 // README: Your code here. You can define some other constants like EtherType.
 `define MAC_DST (0 * 8) +: 48
 `define MAC_SRC (6 * 8) +: 48
+`define MAC_TYPE (12 * 8) +:16
+`define IP4_TTL ((14 + 8) * 8) +: 8
 
 localparam ID_CPU = 3'd4;  // The interface ID of CPU is 4.
+
+localparam ETHERTYPE_IP4 = 16'h0008;
 
 // Incrementally update the checksum in an IPv4 header
 // when TTL is decreased by 1.
