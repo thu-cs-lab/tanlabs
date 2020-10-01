@@ -13,3 +13,6 @@ Tsinghua Advanced Networking Labs
 克隆本仓库后，第一次综合实验框架前，需要先选择所有模块，然后执行“Regenerate Output Products”，如下图所示。
 
 ![regenerate](figures/regenerate.png)
+
+此外，开始实验前，请先阅读`tanlabs/tanlabs.srcs/sources_1/new/`以及`tanlabs/tanlabs.srcs/sim_1/new/`中所有文件。
+
