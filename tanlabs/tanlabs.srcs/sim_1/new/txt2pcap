@@ -1,0 +1,23 @@
+#!/usr/local/bin/scapy -c
+
+import scapy
+import sys
+import struct
+import binascii
+
+fin = open('../../../tanlabs.sim/sim_1/behav/xsim/out_frames.txt', 'r')
+pout = RawPcapWriter('out_frames.pcap', DLT_EN10MB)
+
+def write_frame(iface, data):
+  # We use VLAN ID to indicate the interface ID in pcap files.
+  pout.write(data[:12] + struct.pack('>HH', 0x8100, 1000 + iface) + data[12:])
+
+for line in fin:
+  iface, data = line.rstrip().split(' ', 1)
+  iface = int(iface)
+  data = binascii.a2b_hex(data)
+  write_frame(iface, data)
+
+fin.close()
+pout.close()
+exit(0)

@@ -80,8 +80,14 @@ module frame_datapath
     // README: Your code here.
     // See the guide to figure out what you need to do with frames.
 
-    assign in.dest = 0;  // All frames are forwarded to interface 0!
-    frame_data out = in;
+    frame_data out;
+
+    always @ (*)
+    begin
+        out = in;
+        out.dest = 0;  // All frames are forwarded to interface 0!
+    end
+
     wire out_ready;
     assign in_ready = out_ready || !out.valid;
 
