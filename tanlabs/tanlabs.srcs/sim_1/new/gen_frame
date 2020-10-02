@@ -55,57 +55,57 @@ write_frame(IFACE_DEFAULT_ROUTE, Ether(src=MAC_DEFAULT_ROUTE, dst=MAC_BROADCAST)
 # Simple IP forwarding test.
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
             IP(src=IP_TESTER, dst=IP_TEST_DST)/
-            UDP(sport=7, dport=7)/b'hello, world')
+            UDP(sport=7, dport=7)/b'hello, 00001')
 
 # Packet to the router itself, should not be forwarded.
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
             IP(src=IP_TESTER, dst=IP_DUT)/
-            UDP(sport=7, dport=7)/b'hello, world')
+            UDP(sport=7, dport=7)/b'hello, 00002')
 
 # Simple IP forwarding test (no MAC).
 write_frame(1, Ether(src=MAC_TESTER2, dst=MAC_BROADCAST)/
             IP(src=IP_TESTER2, dst=IP_TEST_DST_NO_MAC)/
-            UDP(sport=7, dport=7)/b'hello, world')
+            UDP(sport=7, dport=7)/b'hello, 00003')
 
 # Simple IP forwarding test (no route).
 write_frame(1, Ether(src=MAC_TESTER2, dst=MAC_BROADCAST)/
             IP(src=IP_TESTER2, dst=IP_TEST_DST_NO_ROUTE)/
-            UDP(sport=7, dport=7)/b'hello, world')
+            UDP(sport=7, dport=7)/b'hello, 00004')
 
 # TTL=2 test.
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
             IP(src=IP_TESTER, dst=IP_TEST_DST, ttl=2)/
-            UDP(sport=7, dport=7)/b'hello, world')
+            UDP(sport=7, dport=7)/b'hello, 00005')
 
 # TTL=1 test.
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
             IP(src=IP_TESTER, dst=IP_TEST_DST, ttl=1)/
-            UDP(sport=7, dport=7)/b'hello, world')
+            UDP(sport=7, dport=7)/b'hello, 00006')
 
 # TTL=0 test.
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
             IP(src=IP_TESTER, dst=IP_TEST_DST, ttl=0)/
-            UDP(sport=7, dport=7)/b'hello, world')
+            UDP(sport=7, dport=7)/b'hello, 00007')
 
 # IP packet with wrong checksum test.
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
             IP(src=IP_TESTER, dst=IP_TEST_DST, chksum=0x1234)/
-            UDP(sport=7, dport=7)/b'hello, world')
+            UDP(sport=7, dport=7)/b'hello, 00008')
 
 # IP packet with 0xfeff checksum test.
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
             IP(src=IP_TESTER, dst=IP_TEST_DST, id=0xb01a, ttl=64)/
-            UDP(sport=7, dport=7)/b'hello, world')
+            UDP(sport=7, dport=7)/b'hello, 00009')
 
 # IP packet with 0 checksum test.
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
             IP(src=IP_TESTER, dst=IP_TEST_DST, id=0xaf1a, ttl=64)/
-            UDP(sport=7, dport=7)/b'hello, world')
+            UDP(sport=7, dport=7)/b'hello, 00010')
 
 # IP packet with 0xffff checksum test.
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST)/
             IP(src=IP_TESTER, dst=IP_TEST_DST, id=0xaf1a, ttl=64, chksum=0xffff)/
-            UDP(sport=7, dport=7)/b'hello, world')
+            UDP(sport=7, dport=7)/b'hello, 00011')
 
 # You can construct more frames to test your datapath.
 
