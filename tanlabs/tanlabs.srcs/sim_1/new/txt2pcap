@@ -1,5 +1,13 @@
 #!/usr/local/bin/scapy -c
 
+# Requirements:
+#   sudo apt install python3-pip
+#   sudo pip3 install scapy
+# Usage:
+#   ./txt2pcap
+# or
+#   scapy -c txt2pcap
+
 import scapy
 import sys
 import struct
