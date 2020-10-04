@@ -1,0 +1,30 @@
+#!/bin/bash
+
+NS=tanlabs-test
+OUT_PREFIX=tanlabs-
+
+ip netns del ${NS}
+ip netns add ${NS}
+ip netns exec ${NS} ip link set lo up
+for ((i = 0; i < 4; i++)) do
+    ip link add veth${i} type veth peer name ${OUT_PREFIX}veth${i}
+    ip link set veth${i} netns ${NS}
+    ip netns exec ${NS} ip link set veth${i} up
+    ip netns exec ${NS} ip link set veth${i} addr 54:57:44:32:5f:3${i}
+    ip netns exec ${NS} ip addr add 10.0.${i}.1/24 dev veth${i}
+    ip link set ${OUT_PREFIX}veth${i} up
+    ip link set ${OUT_PREFIX}veth${i} addr 54:45:53:54:5f:3${i}
+    ip addr add 10.0.${i}.2/24 dev ${OUT_PREFIX}veth${i}
+done
+
+ip netns exec ${NS} ip route add 192.168.0.0/16 via 10.0.3.2 dev veth3
+
+echo In namespace ${NS}:
+ip netns exec ${NS} ip addr
+ip netns exec ${NS} ip route
+echo ==========================
+echo
+echo Outside:
+ip addr show type veth
+ip route | grep ${OUT_PREFIX}
+echo ==========================
