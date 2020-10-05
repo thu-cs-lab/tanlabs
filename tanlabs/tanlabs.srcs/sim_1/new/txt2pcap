@@ -1,19 +1,26 @@
-#!/usr/local/bin/scapy -c
+#!/usr/bin/env python3
 
 # Requirements:
 #   sudo apt install python3-pip
 #   sudo pip3 install scapy
 # Usage:
-#   ./txt2pcap
+#   ./txt2pcap [filename]
 # or
-#   scapy -c txt2pcap
+#   python3 txt2pcap [filename]
 
-import scapy
+from scapy import *
+from scapy.utils import *
+from scapy.layers.l2 import *
+from scapy.layers.inet import *
 import sys
 import struct
 import binascii
 
-fin = open('../../../tanlabs.sim/sim_1/behav/xsim/out_frames.txt', 'r')
+filename = '../../../tanlabs.sim/sim_1/behav/xsim/out_frames.txt'
+if len(sys.argv) >= 2:
+  filename = sys.argv[1]
+
+fin = open(filename, 'r')
 pout = RawPcapWriter('out_frames.pcap', DLT_EN10MB)
 
 def write_frame(iface, data):

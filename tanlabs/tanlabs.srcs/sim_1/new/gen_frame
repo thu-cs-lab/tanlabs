@@ -1,18 +1,21 @@
-#!/usr/local/bin/scapy -c
+#!/usr/bin/env python3
 
 # Requirements:
 #   sudo apt install python3-pip
 #   sudo pip3 install scapy
 # Usage:
-#   ./gen_frame
+#   ./gen_frame [send]
 # or
-#   scapy -c gen_frame
+#   python3 gen_frame [send]
 
-import scapy
-import os
+from scapy import *
+from scapy.utils import *
+from scapy.layers.l2 import *
+from scapy.layers.inet import *
+import sys
 import struct
 
-SEND_FRAMES = bool(os.environ.get('SEND_FRAMES'))
+SEND_FRAMES = len(sys.argv) >= 2 and sys.argv[1] == 'send'
 
 # The broadcast MAC address.
 # Also used when we do not know the router's MAC address when sending IP packets.
