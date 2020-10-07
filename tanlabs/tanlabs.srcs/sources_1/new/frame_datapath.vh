@@ -33,7 +33,7 @@ typedef struct packed
 // README: Your code here. You can define some other constants like EtherType.
 `define MAC_DST (0 * 8) +: 48
 `define MAC_SRC (6 * 8) +: 48
-`define MAC_TYPE (12 * 8) +:16
+`define MAC_TYPE (12 * 8) +: 16
 `define IP4_TTL ((14 + 8) * 8) +: 8
 
 localparam ID_CPU = 3'd4;  // The interface ID of CPU is 4.
