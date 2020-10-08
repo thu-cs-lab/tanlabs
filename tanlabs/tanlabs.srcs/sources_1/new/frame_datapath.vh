@@ -5,8 +5,47 @@ localparam DATAW_WIDTH = 8 * 48;
 
 typedef struct packed
 {
+    logic [(DATAW_WIDTH - 8 * 20 - 8 * 14) - 1:0] payload;
+    logic [31:0] dst;
+    logic [31:0] src;
+    logic [15:0] checksum;
+    logic [7:0] proto;
+    logic [7:0] ttl;
+    logic [15:0] flags;
+    logic [15:0] id;
+    logic [15:0] total_len;
+    logic [7:0] dscp_ecn;
+    logic [3:0] version;
+    logic [3:0] ihl;
+} ip4_hdr;
+
+typedef struct packed
+{
+    logic [(DATAW_WIDTH - 8 * 28 - 8 * 14) - 1:0] payload;
+    logic [31:0] tpa;
+    logic [47:0] tha;
+    logic [31:0] spa;
+    logic [47:0] sha;
+    logic [15:0] op;
+    logic [47:0] magic;
+} arp_hdr;
+
+typedef struct packed
+{
+    union packed
+    {
+        ip4_hdr ip4;
+        arp_hdr arp;
+    } payload;
+    logic [15:0] ethertype;
+    logic [47:0] src;
+    logic [47:0] dst;
+} ether_hdr;
+
+typedef struct packed
+{
     // AXI-Stream signals.
-    logic [DATAW_WIDTH - 1:0] data;
+    ether_hdr data;
     logic [DATAW_WIDTH / 8 - 1:0] keep;
     logic last;
     logic [DATAW_WIDTH / 8 - 1:0] user;
