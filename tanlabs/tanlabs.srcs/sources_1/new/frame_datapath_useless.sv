@@ -99,8 +99,8 @@ module frame_datapath_useless
                 // We only process the first beat of each frame.
 
                 // Useless feature 1: Swap MAC addresses.
-                s1.data[`MAC_DST] <= in.data[`MAC_SRC];
-                s1.data[`MAC_SRC] <= in.data[`MAC_DST];
+                s1.data.dst <= in.data.src;
+                s1.data.src <= in.data.dst;
             end
         end
     end
@@ -120,7 +120,7 @@ module frame_datapath_useless
             if (s1.valid && s1.is_first && !s1.drop && !s1.dont_touch)
             begin
                 // Useless feature 2: Drop IP packets whose TTL values are odd.
-                if (s1.data[`MAC_TYPE] == ETHERTYPE_IP4 && s1.data[((14 + 8) * 8)] == 1'b1)
+                if (s1.data.ethertype == ETHERTYPE_IP4 && s1.data.payload.ip4.ttl[0] == 1'b1)
                 begin
                     s2.drop <= 1'b1;
                 end
@@ -204,9 +204,9 @@ module frame_datapath_useless
             if (s3.valid && s3.is_first && !s3.drop && !s3.dont_touch)
             begin
                 // Useless feature 4: Decrease TTL of IP packets without updating the checksums.
-                if (s3.data[`MAC_TYPE] == ETHERTYPE_IP4)
+                if (s3.data.ethertype == ETHERTYPE_IP4)
                 begin
-                    s4.data[`IP4_TTL] <= s3.data[`IP4_TTL] - 1;
+                    s4.data.payload.ip4.ttl[0] <= s3.data.payload.ip4.ttl[0] - 1;
                 end
             end
         end
