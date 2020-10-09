@@ -128,20 +128,23 @@ module frame_datapath_useless
         end
     end
 
-    localparam ST_SENDRECV = 0;
-    localparam ST_FOO = 1;
-    localparam ST_BAR = 2;
-    localparam ST_BAZ = 3;
+    typedef enum
+    {
+        ST_SEND_RECV,
+        ST_FOO,
+        ST_BAR,
+        ST_BAZ
+    } s3_state_t;
 
     frame_data s3_reg, s3;
-    integer s3_state;
+    s3_state_t s3_state;
     wire s3_ready;
-    assign s2_ready = (s3_ready && s3_state == ST_SENDRECV) || !s2.valid;
+    assign s2_ready = (s3_ready && s3_state == ST_SEND_RECV) || !s2.valid;
 
     always @ (*)
     begin
         s3 = s3_reg;
-        s3.valid = s3_reg.valid && s3_state == ST_SENDRECV;
+        s3.valid = s3_reg.valid && s3_state == ST_SEND_RECV;
     end
 
     always @ (posedge eth_clk or posedge reset)
@@ -149,13 +152,13 @@ module frame_datapath_useless
         if (reset)
         begin
             s3_reg <= 0;
-            s3_state <= ST_SENDRECV;
+            s3_state <= ST_SEND_RECV;
         end
         else
         begin
             // Useless feature 3: Take 3 cycles to do nothing.
             case (s3_state)
-            ST_SENDRECV:
+            ST_SEND_RECV:
             begin
                 if (s3_ready)
                 begin
@@ -179,11 +182,11 @@ module frame_datapath_useless
             ST_BAZ:
             begin
                 s3_reg.data <= s3_reg.data ^ 3;  // Pretend to do something.
-                s3_state <= ST_SENDRECV;
+                s3_state <= ST_SEND_RECV;
             end
             default:
             begin
-                s3_state <= ST_SENDRECV;
+                s3_state <= ST_SEND_RECV;
             end
             endcase
         end
