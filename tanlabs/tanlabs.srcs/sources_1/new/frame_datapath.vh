@@ -49,7 +49,7 @@ typedef struct packed
     logic [DATAW_WIDTH / 8 - 1:0] keep;
     logic last;
     logic [DATAW_WIDTH / 8 - 1:0] user;
-    logic [ID_WIDTH - 1:0] id;  // ingress interface
+    logic [ID_WIDTH - 1:0] id;  // The ingress interface.
     logic valid;
 
     // Control signals.
@@ -57,8 +57,8 @@ typedef struct packed
 
     // Other control signals.
     // **They are only effective at the first beat.**
-    logic [ID_WIDTH - 1:0] dest;  // egress interface
-    logic drop;  // Drop this frame?
+    logic [ID_WIDTH - 1:0] dest;  // The egress interface.
+    logic drop;  // Drop this frame (i.e., this beat and the following beats till the last)?
     logic dont_touch;  // Do not touch this beat!
 
     // Drop the next frame? It is useful when you need to shrink a frame

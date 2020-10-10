@@ -81,6 +81,7 @@ module frame_datapath_useless
     end
 
     // README: USELESS features :-)
+    // You do not have to have exactly 5 stages.
 
     frame_data s1;
     wire s1_ready;
@@ -96,7 +97,12 @@ module frame_datapath_useless
             s1 <= in;
             if (in.valid && in.is_first && !in.drop && !in.dont_touch)
             begin
-                // We only process the first beat of each frame.
+                // We only process the beat that
+                //   1) is valid, otherwise its data is **garbage**;
+                //   2) is the first beat of a frame, since only the first beat contains needed
+                //      headers;
+                //   3) is not dropped by previous stages;
+                //   4) is not marked as "do not touch" by previous stages.
 
                 // Useless feature 1: Swap MAC addresses.
                 s1.data.dst <= in.data.src;
