@@ -1,7 +1,14 @@
 // 'w' means wide.
 localparam DATAW_WIDTH = 8 * 48;
 
+localparam VLAN_WIDTH = 8 * 4;
+
 // README: Your code here.
+typedef struct packed
+{
+    logic [15:0] id;
+    logic [15:0] ethertype;
+} vlan_tag_t;
 
 typedef struct packed
 {
@@ -39,6 +46,7 @@ typedef struct packed
 localparam ID_CPU = 3'd4;  // The interface ID of CPU is 4.
 
 localparam ETHERTYPE_IP4 = 16'h0008;
+localparam ETHERTYPE_VLAN = 16'h0081;
 
 // Incrementally update the checksum in an IPv4 header
 // when TTL is decreased by 1.
