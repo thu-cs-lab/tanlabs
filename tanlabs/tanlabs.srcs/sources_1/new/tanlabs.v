@@ -8,32 +8,38 @@ module tanlabs(
     input gtrefclk_p,
     input gtrefclk_n,
 
-    output wire [15:0] led,
-
     // SFP:
-    // +-+-+
-    // |0|2|
-    // +-+-+
-    // |1|3|
-    // +-+-+
-    input [3:0] sfp_rx_los,
+    // +-+-+-+-+
+    // |0|1|2|3|
+    // +-+-+-+-+
     input [3:0] sfp_rx_p,
     input [3:0] sfp_rx_n,
     output wire [3:0] sfp_tx_disable,
     output wire [3:0] sfp_tx_p,
     output wire [3:0] sfp_tx_n,
-    output wire [7:0] sfp_led,  // 0 1  2 3  4 5  6 7
+    output wire [7:0] sfp_rs,
+    output wire [3:0] sfp_led,
 
-    // unused.
-    input sfp_sda,
-    input sfp_scl
+    // ETH1 RGMII
+    input rgmii1_rxc,
+    input rgmii1_rx_ctl,
+    input [3:0] rgmii1_rxd,
+    output wire rgmii1_txc,
+    output wire rgmii1_tx_ctl,
+    output wire [3:0] rgmii1_txd,
+    output wire mdc,
+    inout wire mdio,
+    output wire eth_rstn
 );
+
+    assign sfp_rs = 8'hff;
 
     wire [4:0] debug_ingress_interconnect_ready;
     wire debug_datapath_fifo_ready;
     wire debug_egress_interconnect_ready;
+    wire debug_rgmii_clk_conv_ready;
 
-    wire reset_in = RST;
+    wire reset_in = ~RST;
     wire locked;
     wire gtref_clk;  // 125MHz for the PHY/MAC IP core
     wire ref_clk;  // 200MHz for the PHY/MAC IP core
@@ -56,12 +62,8 @@ module tanlabs(
     wire userclk_out;
     wire userclk2_out;
     wire pma_reset_out;
-    wire gt0_pll0outclk_out;
-    wire gt0_pll0outrefclk_out;
-    wire gt0_pll1outclk_out;
-    wire gt0_pll1outrefclk_out;
-    wire gt0_pll0lock_out;
-    wire gt0_pll0refclklost_out;
+    wire gt0_qplloutclk_out;
+    wire gt0_qplloutrefclk_out;
     wire gtref_clk_out;
     wire gtref_clk_buf_out;
 
@@ -106,12 +108,8 @@ module tanlabs(
         .userclk_out(userclk_out),
         .userclk2_out(userclk2_out),
         .pma_reset_out(pma_reset_out),
-        .gt0_pll0outclk_out(gt0_pll0outclk_out),
-        .gt0_pll0outrefclk_out(gt0_pll0outrefclk_out),
-        .gt0_pll1outclk_out(gt0_pll1outclk_out),
-        .gt0_pll1outrefclk_out(gt0_pll1outrefclk_out),
-        .gt0_pll0lock_out(gt0_pll0lock_out),
-        .gt0_pll0refclklost_out(gt0_pll0refclklost_out),
+        .gt0_qplloutclk_out(gt0_qplloutclk_out),
+        .gt0_qplloutrefclk_out(gt0_qplloutrefclk_out),
         .gtref_clk_out(gtref_clk_out),
         .gtref_clk_buf_out(gtref_clk_buf_out),
 
@@ -157,7 +155,7 @@ module tanlabs(
 
         .tx_ifg_delay(8'h00),
         .status_vector(),
-        .signal_detect(~sfp_rx_los[0]),
+        .signal_detect(1'b1),
 
         .sfp_rxn(sfp_rx_n[0]),
         .sfp_rxp(sfp_rx_p[0]),
@@ -191,13 +189,8 @@ module tanlabs(
                 .pma_reset(pma_reset_out),
                 .rxoutclk(),
                 .txoutclk(),
-                .gt0_pll0outclk_in(gt0_pll0outclk_out),
-                .gt0_pll0outrefclk_in(gt0_pll0outrefclk_out),
-                .gt0_pll1outclk_in(gt0_pll1outclk_out),
-                .gt0_pll1outrefclk_in(gt0_pll1outrefclk_out),
-                .gt0_pll0lock_in(gt0_pll0lock_out),
-                .gt0_pll0refclklost_in(gt0_pll0refclklost_out),
-                .gt0_pll0reset_out(),
+                .gt0_qplloutclk_in(gt0_qplloutclk_out),
+                .gt0_qplloutrefclk_in(gt0_qplloutrefclk_out),
                 .gtref_clk(gtref_clk_out),
                 .gtref_clk_buf(gtref_clk_buf_out),
 
@@ -243,7 +236,7 @@ module tanlabs(
 
                 .tx_ifg_delay(8'h00),
                 .status_vector(),
-                .signal_detect(~sfp_rx_los[i]),
+                .signal_detect(1'b1),
 
                 .sfp_rxn(sfp_rx_n[i]),
                 .sfp_rxp(sfp_rx_p[i]),
@@ -253,44 +246,138 @@ module tanlabs(
         end
     endgenerate
 
-    wire [7:0] internal_tx_data;
-    wire internal_tx_last;
-    wire internal_tx_user;
-    wire internal_tx_valid;
-    assign eth_rx8_data[4] = internal_tx_data;
-    assign eth_rx8_last[4] = internal_tx_last;
-    assign eth_rx8_user[4] = internal_tx_user;
-    assign eth_rx8_valid[4] = internal_tx_valid;
+    wire rgmii_tx_clk;
+    wire [7:0] rgmii_tx_data;
+    wire rgmii_tx_last;
+    wire rgmii_tx_ready;
+    wire rgmii_tx_user;
+    wire rgmii_tx_valid;
 
-    wire [7:0] internal_rx_data = eth_tx8_data[4];
-    wire internal_rx_last = eth_tx8_last[4];
-    wire internal_rx_user = eth_tx8_user[4];
-    wire internal_rx_valid = eth_tx8_valid[4];
-    wire internal_rx_ready;
-    assign eth_tx8_ready[4] = internal_rx_ready;
+    wire rgmii_rx_clk;
+    wire [7:0] rgmii_rx_data;
+    wire rgmii_rx_last;
+    wire rgmii_rx_user;
+    wire rgmii_rx_valid;
 
-    // README: internal_tx_* and internal_rx_* are left for internal use.
-    // You can connect them with your CPU to transfer frames between the router part and the CPU part,
-    // and you may need to write some logic to receive from internal_rx_*, store data to some memory,
-    // read data from some memory, and send to internal_tx_*.
-    // You can also transfer frames in other ways.
-    assign internal_tx_data = 0;
-    assign internal_tx_last = 0;
-    assign internal_tx_user = 0;
-    assign internal_tx_valid = 0;
-    assign internal_rx_ready = 0;
+    wire mdio_oe, mdi, mdo;
+    assign mdi = mdio;
+    assign mdio = mdio_oe ? mdo : 1'bz;
+
+    mdio_ctrl mdio_ctrl_i(
+        .clk(eth_clk),
+        .reset(reset_eth),
+
+        .mdc(mdc),
+        .mdi(mdi),
+        .mdo(mdo),
+        .mdio_oe(mdio_oe),
+        .eth_rstn(eth_rstn)
+    );
+
+    tri_mode_ethernet_mac_0 tri_mode_ethernet_mac_0_i(
+        .gtx_clk(gtref_clk),                                  // input wire gtx_clk
+        .gtx_clk_out(),                          // output wire gtx_clk_out
+        .gtx_clk90_out(),                      // output wire gtx_clk90_out
+        .glbl_rstn(~reset_not_sync),                              // input wire glbl_rstn
+
+        .rx_axi_rstn(1'b1),                          // input wire rx_axi_rstn
+        .tx_axi_rstn(1'b1),                          // input wire tx_axi_rstn
+        .rx_reset(),                                // output wire rx_reset
+        .tx_reset(),                                // output wire tx_reset
+
+        .rx_statistics_vector(),        // output wire [27 : 0] rx_statistics_vector
+        .rx_statistics_valid(),          // output wire rx_statistics_valid
+
+        .rx_mac_aclk(rgmii_rx_clk),                          // output wire rx_mac_aclk
+        .rx_axis_mac_tdata(rgmii_rx_data),              // output wire [7 : 0] rx_axis_mac_tdata
+        .rx_axis_mac_tvalid(rgmii_rx_valid),            // output wire rx_axis_mac_tvalid
+        .rx_axis_mac_tlast(rgmii_rx_last),              // output wire rx_axis_mac_tlast
+        .rx_axis_mac_tuser(rgmii_rx_user),              // output wire rx_axis_mac_tuser
+
+        .tx_mac_aclk(rgmii_tx_clk),                          // output wire tx_mac_aclk
+        .tx_axis_mac_tdata(rgmii_tx_data),              // input wire [7 : 0] tx_axis_mac_tdata
+        .tx_axis_mac_tvalid(rgmii_tx_valid),            // input wire tx_axis_mac_tvalid
+        .tx_axis_mac_tlast(rgmii_tx_last),              // input wire tx_axis_mac_tlast
+        .tx_axis_mac_tuser(rgmii_tx_user),              // input wire [0 : 0] tx_axis_mac_tuser
+        .tx_axis_mac_tready(rgmii_tx_ready),            // output wire tx_axis_mac_tready
+
+        .pause_req(1'b0),                              // input wire pause_req
+        .pause_val(16'd0),                              // input wire [15 : 0] pause_val
+
+        .refclk(ref_clk),                                    // input wire refclk
+
+        .rgmii_txd(rgmii1_txd),                              // output wire [3 : 0] rgmii_txd
+        .rgmii_tx_ctl(rgmii1_tx_ctl),                        // output wire rgmii_tx_ctl
+        .rgmii_txc(rgmii1_txc),                              // output wire rgmii_txc
+        .rgmii_rxd(rgmii1_rxd),                              // input wire [3 : 0] rgmii_rxd
+        .rgmii_rx_ctl(rgmii1_rx_ctl),                        // input wire rgmii_rx_ctl
+        .rgmii_rxc(rgmii1_rxc),                              // input wire rgmii_rxc
+
+        .tx_ifg_delay(8'h00),                        // input wire [7 : 0] tx_ifg_delay
+        .tx_statistics_vector(),        // output wire [31 : 0] tx_statistics_vector
+        .tx_statistics_valid(),          // output wire tx_statistics_valid
+        .speedis100(),                            // output wire speedis100
+        .speedis10100(),                        // output wire speedis10100
+        .inband_link_status(),            // output wire inband_link_status
+        .inband_clock_speed(),            // output wire [1 : 0] inband_clock_speed
+        .inband_duplex_status(),        // output wire inband_duplex_status
+
+        // 1Gbps | Promiscuous | VLAN | Enable
+        .rx_configuration_vector(80'b10100000000110),  // input wire [79 : 0] rx_configuration_vector
+        // 1Gbps | VLAN | Enable
+        .tx_configuration_vector(80'b10000000000110)  // input wire [79 : 0] tx_configuration_vector
+    );
+
+    axis_clock_converter_0 axis_clock_converter_rgmii_eth(
+        .s_axis_aresetn(1'b1),
+        .m_axis_aresetn(~reset_eth),
+
+        .s_axis_aclk(rgmii_rx_clk),
+        .s_axis_tvalid(rgmii_rx_valid),
+        .s_axis_tready(debug_rgmii_clk_conv_ready),
+        .s_axis_tdata(rgmii_rx_data),
+        .s_axis_tlast(rgmii_rx_last),
+        .s_axis_tuser(rgmii_rx_user),
+
+        .m_axis_aclk(eth_clk),
+        .m_axis_tvalid(eth_rx8_valid[4]),
+        .m_axis_tready(1'b1),
+        .m_axis_tdata(eth_rx8_data[4]),
+        .m_axis_tlast(eth_rx8_last[4]),
+        .m_axis_tuser(eth_rx8_user[4])
+    );
+
+    axis_clock_converter_0 axis_clock_converter_eth_rgmii(
+        .s_axis_aresetn(~reset_eth),
+        .m_axis_aresetn(1'b1),
+
+        .s_axis_aclk(eth_clk),
+        .s_axis_tvalid(eth_tx8_valid[4]),
+        .s_axis_tready(eth_tx8_ready[4]),
+        .s_axis_tdata(eth_tx8_data[4]),
+        .s_axis_tlast(eth_tx8_last[4]),
+        .s_axis_tuser(eth_tx8_user[4]),
+
+        .m_axis_aclk(rgmii_tx_clk),
+        .m_axis_tvalid(rgmii_tx_valid),
+        .m_axis_tready(rgmii_tx_ready),
+        .m_axis_tdata(rgmii_tx_data),
+        .m_axis_tlast(rgmii_tx_last),
+        .m_axis_tuser(rgmii_tx_user)
+    );
 
     wire [7:0] out_led;
     led_delayer led_delayer_i(
         .clk(eth_clk),
         .reset(reset_eth),
-        .in_led({(eth_tx8_valid[3] & eth_tx8_ready[3]) | eth_rx8_valid[3], ~sfp_rx_los[3],
-                 (eth_tx8_valid[2] & eth_tx8_ready[2]) | eth_rx8_valid[2], ~sfp_rx_los[2],
-                 (eth_tx8_valid[1] & eth_tx8_ready[1]) | eth_rx8_valid[1], ~sfp_rx_los[1],
-                 (eth_tx8_valid[0] & eth_tx8_ready[0]) | eth_rx8_valid[0], ~sfp_rx_los[0]}),
+        .in_led({4'b0,
+                 (eth_tx8_valid[3] & eth_tx8_ready[3]) | eth_rx8_valid[3],
+                 (eth_tx8_valid[2] & eth_tx8_ready[2]) | eth_rx8_valid[2],
+                 (eth_tx8_valid[1] & eth_tx8_ready[1]) | eth_rx8_valid[1],
+                 (eth_tx8_valid[0] & eth_tx8_ready[0]) | eth_rx8_valid[0]}),
         .out_led(out_led)
     );
-    assign sfp_led = out_led;
+    assign sfp_led = out_led[3:0];
 
     localparam DATA_WIDTH = 64;
     localparam ID_WIDTH = 3;
@@ -553,15 +640,15 @@ module tanlabs(
         end
     endgenerate
 
-    led_delayer led_delayer_debug_i1(
-        .clk(eth_clk),
-        .reset(reset_eth),
-        .in_led({1'b0, ~debug_egress_interconnect_ready,
-                 ~debug_datapath_fifo_ready,
-                 ~debug_ingress_interconnect_ready}),
-        .out_led(led[7:0])
-    );
-    assign led[15:8] = 0;
+//    wire [7:0] debug_led;
+//    led_delayer led_delayer_debug_i1(
+//        .clk(eth_clk),
+//        .reset(reset_eth),
+//        .in_led({1'b0, ~debug_egress_interconnect_ready,
+//                 ~debug_datapath_fifo_ready,
+//                 ~debug_ingress_interconnect_ready}),
+//        .out_led(debug_led)
+//    );
 
     // README: You may use this to reset your CPU.
     wire reset_core;

@@ -97,7 +97,7 @@ module frame_datapath_push_vlan
         out = out_reg;
         out.drop = 1'b0;
         out.drop_next = 1'b0;
-        out.dest = 0;
+        out.dest = 4;
     end
 
     always @ (posedge eth_clk or posedge reset)

@@ -157,6 +157,21 @@ write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0, type='IPv4') /
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0, type='ARP') /
             b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00016')
 
+# Test cases for VLAN push/pop.
+write_frame(0, Ether(b'BeLrYEeECrHI\x81\x00\x00\x01m734+jLpfJshQTmHsz+NJrYR8001'))
+write_frame(0, Ether(b'BeLrYEeECrHI\x81\x00\x00\x02m734+jLpfJshQTmHsz+NJrYR8PCK002'))
+write_frame(0, Ether(b'BeLrYEeECrHI\x81\x00\x00\x03m734+jLpfJshQTmHsz+NJrYR8PCKo003'))  # 48B
+write_frame(0, Ether(b'BeLrYEeECrHI\x81\x00\x00\x04m734+jLpfJshQTmHsz+NJrYR8PCKod004'))
+write_frame(0, Ether(b'BeLrYEeECrHI\x81\x00\x00\x05m734+jLpfJshQTmHsz+NJrYR8PCKodcW9005'))
+
+write_frame(0, Ether(b'BeLrYEeECrHI\x81\x00\x00\x01yAKyNuPtGHFZVeFGy84veGHWAmqwrc8+Q1kJAQjEUrkxjwBPm734+jLpfJshQTmHsz+NJrYR8006'))
+write_frame(0, Ether(b'BeLrYEeECrHI\x81\x00\x00\x02yAKyNuPtGHFZVeFGy84veGHWAmqwrc8+Q1kJAQjEUrkxjwBPm734+jLpfJshQTmHsz+NJrYR8PCK007'))
+write_frame(0, Ether(b'BeLrYEeECrHI\x81\x00\x00\x03yAKyNuPtGHFZVeFGy84veGHWAmqwrc8+Q1kJAQjEUrkxjwBPm734+jLpfJshQTmHsz+NJrYR8PCKo008'))  # 96B
+write_frame(0, Ether(b'BeLrYEeECrHI\x81\x00\x00\x04yAKyNuPtGHFZVeFGy84veGHWAmqwrc8+Q1kJAQjEUrkxjwBPm734+jLpfJshQTmHsz+NJrYR8PCKod009'))
+write_frame(0, Ether(b'BeLrYEeECrHI\x81\x00\x00\x05yAKyNuPtGHFZVeFGy84veGHWAmqwrc8+Q1kJAQjEUrkxjwBPm734+jLpfJshQTmHsz+NJrYR8PCKodcW9010'))
+
+write_frame(0, Ether(b'BeLrYEeECrHI\x81\x00\x00\x01m734+jLpfJshQTmHsz+NJrYR8011'))
+
 # You can construct more frames to test your datapath.
 
 fout.close()

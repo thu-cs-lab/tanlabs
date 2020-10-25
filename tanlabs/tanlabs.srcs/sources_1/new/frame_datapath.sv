@@ -85,7 +85,7 @@ module frame_datapath
     always @ (*)
     begin
         out = in;
-        out.dest = 0;  // All frames are forwarded to interface 0!
+        out.dest = in.id ^ 3'b100;  // All frames are forwarded to interface 0!
     end
 
     wire out_ready;
