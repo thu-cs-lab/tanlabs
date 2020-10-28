@@ -2,7 +2,7 @@
 
 module egress_wrapper
 #(
-    parameter DATA_WIDTH = 64,
+    parameter DATA_WIDTH = 8 * 48,
     parameter ID_WIDTH = 3
 )
 (
