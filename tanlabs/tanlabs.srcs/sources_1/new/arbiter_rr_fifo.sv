@@ -1,42 +1,46 @@
 `timescale 1ns / 1ps
 `include "frame_datapath.vh"
 
-module egress_wrapper
+module arbiter_rr_fifo
 #(
     parameter DATA_WIDTH = 8 * 48,
     parameter ID_WIDTH = 3,
-    parameter [1:0] ENABLE_FIFO = 2'b11,
-    parameter ENABLE_VLAN_TAGGER = 0
+    parameter [3:0] ENABLE_FIFO = 4'b1111
 )
 (
     input eth_clk,
     input reset,
 
     input frame_data in0,
-    output wire in0_ready,
+    output in0_ready,
     input frame_data in1,
-    output wire in1_ready,
+    output in1_ready,
+    input frame_data in2,
+    output in2_ready,
+    input frame_data in3,
+    output in3_ready,
 
-    output wire [7:0] m_data,
-    output wire m_last,
-    output wire m_user,
-    output wire m_valid,
-    input m_ready
+    output frame_data out,
+    input out_ready
 );
 
-    frame_data in [0:1];
+    frame_data in [0:3];
     assign in[0] = in0;
     assign in[1] = in1;
-    wire [1:0] in_ready;
+    assign in[2] = in2;
+    assign in[3] = in3;
+    wire [3:0] in_ready;
     assign in0_ready = in_ready[0];
     assign in1_ready = in_ready[1];
+    assign in2_ready = in_ready[2];
+    assign in3_ready = in_ready[3];
 
-    frame_data fifo [0:1];
-    wire [1:0] fifo_ready;
+    frame_data fifo [0:3];
+    wire [3:0] fifo_ready;
 
     genvar i;
     generate
-        for (i = 0; i < 2; i = i + 1)
+        for (i = 0; i < 4; i = i + 1)
         begin
             if (ENABLE_FIFO[i])
             begin
@@ -104,88 +108,27 @@ module egress_wrapper
         end
     endgenerate
 
-    frame_data mixed;
-    wire mixed_ready;
-
-    axis_arbiter_egress axis_arbiter_egress_i(
-        .ACLK(eth_clk),
-        .ARESETN(~reset),
-        .S00_AXIS_ACLK(eth_clk),
-        .S00_AXIS_ARESETN(~reset),
-        .S01_AXIS_ACLK(eth_clk),
-        .S01_AXIS_ARESETN(~reset),
-        .M00_AXIS_ACLK(eth_clk),
-        .M00_AXIS_ARESETN(~reset),
-
-        .S00_AXIS_TVALID(fifo[0].valid),
-        .S00_AXIS_TREADY(fifo_ready[0]),
-        .S00_AXIS_TDATA(fifo[0].data),
-        .S00_AXIS_TKEEP(fifo[0].keep),
-        .S00_AXIS_TLAST(fifo[0].last),
-        .S00_AXIS_TID(fifo[0].id),
-
-        .S01_AXIS_TVALID(fifo[1].valid),
-        .S01_AXIS_TREADY(fifo_ready[1]),
-        .S01_AXIS_TDATA(fifo[1].data),
-        .S01_AXIS_TKEEP(fifo[1].keep),
-        .S01_AXIS_TLAST(fifo[1].last),
-        .S01_AXIS_TID(fifo[1].id),
-
-        .M00_AXIS_TVALID(mixed.valid),
-        .M00_AXIS_TREADY(mixed_ready),
-        .M00_AXIS_TDATA(mixed.data),
-        .M00_AXIS_TKEEP(mixed.keep),
-        .M00_AXIS_TLAST(mixed.last),
-        .M00_AXIS_TID(mixed.id),
-
-        .S00_ARB_REQ_SUPPRESS(1'b0),
-        .S01_ARB_REQ_SUPPRESS(1'b0)
-    );
-
-    frame_data vlan;
-    wire vlan_ready;
-
-    generate
-        if (ENABLE_VLAN_TAGGER)
-        begin
-            frame_datapath_push_vlan
-            #(
-                .ID_WIDTH(ID_WIDTH)
-            )
-            frame_datapath_push_vlan_i(
-                .eth_clk(eth_clk),
-                .reset(reset),
-
-                .in(mixed),
-                .in_ready(mixed_ready),
-
-                .out(vlan),
-                .out_ready(vlan_ready)
-            );
-        end
-        else
-        begin
-            assign vlan = mixed;
-            assign mixed_ready = vlan_ready;
-        end
-    endgenerate
-
-    axis_dwidth_converter_egress axis_dwidth_converter_egress_i(
+    axis_arbiter_rr axis_arbiter_rr_i(
         .aclk(eth_clk),
         .aresetn(~reset),
 
-        .s_axis_tvalid(vlan.valid),
-        .s_axis_tready(vlan_ready),
-        .s_axis_tdata(vlan.data),
-        .s_axis_tkeep(vlan.keep),
-        .s_axis_tlast(vlan.last),
-        .s_axis_tuser(vlan.user),
+        .s_axis_tvalid({fifo[3].valid, fifo[2].valid, fifo[1].valid, fifo[0].valid}),
+        .s_axis_tready({fifo_ready[3], fifo_ready[2], fifo_ready[1], fifo_ready[0]}),
+        .s_axis_tdata({fifo[3].data, fifo[2].data, fifo[1].data, fifo[0].data}),
+        .s_axis_tkeep({fifo[3].keep, fifo[2].keep, fifo[1].keep, fifo[0].keep}),
+        .s_axis_tlast({fifo[3].last, fifo[2].last, fifo[1].last, fifo[0].last}),
+        .s_axis_tid({fifo[3].id, fifo[2].id, fifo[1].id, fifo[0].id}),
+        .s_axis_tuser({fifo[3].user, fifo[2].user, fifo[1].user, fifo[0].user}),
 
-        .m_axis_tvalid(m_valid),
-        .m_axis_tready(m_ready),
-        .m_axis_tdata(m_data),
-        .m_axis_tkeep(),
-        .m_axis_tlast(m_last),
-        .m_axis_tuser(m_user)
+        .m_axis_tvalid(out.valid),
+        .m_axis_tready(out_ready),
+        .m_axis_tdata(out.data),
+        .m_axis_tkeep(out.keep),
+        .m_axis_tlast(out.last),
+        .m_axis_tid(out.id),
+        .m_axis_tuser(out.user),
+
+        .s_req_suppress(0),
+        .s_decode_err()
     );
 endmodule

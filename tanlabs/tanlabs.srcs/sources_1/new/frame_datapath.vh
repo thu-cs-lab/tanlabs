@@ -6,14 +6,95 @@ localparam VLAN_WIDTH = 8 * 4;
 // README: Your code here.
 typedef struct packed
 {
+    logic [63:0] nbytes;
+    logic [63:0] npackets;
+    logic [63:0] nerror;
+} interface_send_state_t;
+
+typedef struct packed
+{
+    logic [63:0] nbytes;
+    logic [63:0] npackets;
+    logic [63:0] nerror;
+} interface_recv_state_t;
+
+typedef struct packed
+{
+    logic reset_counters;
+} interface_config_t;
+
+typedef struct packed
+{
+    interface_send_state_t interface_send_state [0:3];
+    interface_recv_state_t interface_recv_state [0:3];
+} state_reg_t;
+
+typedef struct packed
+{
+    interface_config_t interface_config [0:3];
+} config_reg_t;
+
+typedef struct packed
+{
     logic [15:0] id;
     logic [15:0] ethertype;
 } vlan_tag_t;
 
 typedef struct packed
 {
+    logic [(DATAW_WIDTH - 8 * 8 - 8 * 20 - 8 * 14) - 1:0] payload;
+    logic [15:0] checksum;
+    logic [15:0] len;
+    logic [15:0] dst;
+    logic [15:0] src;
+} udp_hdr;
+
+typedef struct packed
+{
+    union packed
+    {
+        udp_hdr udp;
+    } payload;
+    logic [31:0] dst;
+    logic [31:0] src;
+    logic [15:0] checksum;
+    logic [7:0] proto;
+    logic [7:0] ttl;
+    logic [15:0] flags;
+    logic [15:0] id;
+    logic [15:0] total_len;
+    logic [7:0] dscp_ecn;
+    logic [3:0] version;
+    logic [3:0] ihl;
+} ip4_hdr;
+
+typedef struct packed
+{
+    logic [(DATAW_WIDTH - 8 * 28 - 8 * 14) - 1:0] payload;
+    logic [31:0] tpa;
+    logic [47:0] tha;
+    logic [31:0] spa;
+    logic [47:0] sha;
+    logic [15:0] op;
+    logic [47:0] magic;
+} arp_hdr;
+
+typedef struct packed
+{
+    union packed
+    {
+        ip4_hdr ip4;
+        arp_hdr arp;
+    } payload;
+    logic [15:0] ethertype;
+    logic [47:0] src;
+    logic [47:0] dst;
+} ether_hdr;
+
+typedef struct packed
+{
     // AXI-Stream signals.
-    logic [DATAW_WIDTH - 1:0] data;
+    ether_hdr data;
     logic [DATAW_WIDTH / 8 - 1:0] keep;
     logic last;
     logic [DATAW_WIDTH / 8 - 1:0] user;
@@ -37,26 +118,14 @@ typedef struct packed
     // README: Your code here.
 } frame_data;
 
-// README: Your code here. You can define some other constants like EtherType.
-`define MAC_DST (0 * 8) +: 48
-`define MAC_SRC (6 * 8) +: 48
-`define MAC_TYPE (12 * 8) +: 16
-`define IP4_TTL ((14 + 8) * 8) +: 8
-
 localparam ID_CPU = 3'd4;  // The interface ID of CPU is 4.
 
+localparam ETHERTYPE_ARP = 16'h0608;
 localparam ETHERTYPE_IP4 = 16'h0008;
 localparam ETHERTYPE_VLAN = 16'h0081;
 
-// Incrementally update the checksum in an IPv4 header
-// when TTL is decreased by 1.
-// Note: This *function* should be a combinational logic.
-// Input: old checksum
-// Output: new checksum
-function [15:0] ip4_update_checksum;
-    input [15:0] sum;
-begin
-    // README: Your code here.
-    ip4_update_checksum = 0;
-end
-endfunction
+localparam PROTO_UDP = 8'd17;
+localparam UDP_PAYLOAD_MAGIC = 48'h323232445754;  // TWD222
+
+localparam MY_MAC = 48'h303032445754;  // TWD200
+localparan MY_IP = 32'h6408080a;  // 10.8.8.100

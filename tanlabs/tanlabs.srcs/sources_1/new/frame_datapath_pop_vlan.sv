@@ -1,63 +1,20 @@
 `timescale 1ns / 1ps
+`include "frame_datapath.vh"
 
 module frame_datapath_pop_vlan
 #(
-    parameter DATA_WIDTH = 64,
     parameter ID_WIDTH = 3
 )
 (
     input eth_clk,
     input reset,
 
-    input [DATA_WIDTH - 1:0] s_data,
-    input [DATA_WIDTH / 8 - 1:0] s_keep,
-    input s_last,
-    input [DATA_WIDTH / 8 - 1:0] s_user,
-    input [ID_WIDTH - 1:0] s_id,
-    input s_valid,
-    output wire s_ready,
+    input frame_data in,
+    output wire in_ready,
 
-    output wire [DATA_WIDTH - 1:0] m_data,
-    output wire [DATA_WIDTH / 8 - 1:0] m_keep,
-    output wire m_last,
-    output wire [DATA_WIDTH / 8 - 1:0] m_user,
-    output wire [ID_WIDTH - 1:0] m_dest,
-    output wire m_valid,
-    input m_ready
+    output frame_data out,
+    input out_ready
 );
-
-    `include "frame_datapath.vh"
-
-    frame_data in;
-    wire in_ready;
-
-    // README: Here, we use a width upsizer to change the width to 48 bytes
-    // (MAC 14 + ARP 28 + round up 6) to ensure that L2 (MAC) and L3 (IPv4 or ARP) headers appear
-    // in one beat (the first beat) facilitating our processing.
-    // You can remove this.
-    axis_dwidth_converter_up axis_dwidth_converter_up_i(
-        .aclk(eth_clk),
-        .aresetn(~reset),
-
-        .s_axis_tvalid(s_valid),
-        .s_axis_tready(s_ready),
-        .s_axis_tdata(s_data),
-        .s_axis_tkeep(s_keep),
-        .s_axis_tlast(s_last),
-        .s_axis_tid(s_id),
-        .s_axis_tuser(s_user),
-
-        .m_axis_tvalid(in.valid),
-        .m_axis_tready(in_ready),
-        .m_axis_tdata(in.data),
-        .m_axis_tkeep(in.keep),
-        .m_axis_tlast(in.last),
-        .m_axis_tid(in.id),
-        .m_axis_tuser(in.user)
-    );
-
-    assign in.drop = 1'b0;
-    assign in.drop_next = 1'b0;
 
     // Track frames and figure out when it is the first beat.
     always @ (posedge eth_clk or posedge reset)
@@ -75,28 +32,27 @@ module frame_datapath_pop_vlan
         end
     end
 
-    frame_data out_reg, out;
+    frame_data out0_reg, out0;
     reg [DATAW_WIDTH - VLAN_WIDTH - 1:0] leftover_data;
     reg [(DATAW_WIDTH - VLAN_WIDTH) / 8 - 1:0] leftover_keep, leftover_user;
     reg leftover_valid, leftover_drop;
     reg [ID_WIDTH - 1:0] leftover_dest;
-    wire out_ready;
-    assign in_ready = out_ready || !in.valid;
+    wire out0_ready;
+    assign in_ready = out0_ready || !in.valid;
 
     vlan_tag_t in_vlan;
     assign in_vlan = in.data[96 +: VLAN_WIDTH];
 
     always @ (*)
     begin
-        out = out_reg;
-        out.drop_next = 1'b0;
+        out0 = out0_reg;
     end
 
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
         begin
-            out_reg <= 0;
+            out0_reg <= 0;
             leftover_data <= 0;
             leftover_keep <= 0;
             leftover_user <= 0;
@@ -106,19 +62,19 @@ module frame_datapath_pop_vlan
         end
         else
         begin
-            if (out_ready)
+            if (out0_ready)
             begin
-                out_reg.valid <= 1'b0;
-                out_reg.dest <= leftover_dest;
-                out_reg.drop <= leftover_drop;
+                out0_reg.valid <= 1'b0;
+                out0_reg.dest <= leftover_dest;
+                out0_reg.drop <= leftover_drop;
                 if (in.is_first)
                 begin
                     // Send previous frame's leftovers.
-                    out_reg.data <= {{VLAN_WIDTH{1'b0}}, leftover_data};
-                    out_reg.keep <= {{(VLAN_WIDTH / 8){1'b0}}, leftover_keep};
-                    out_reg.user <= {{(VLAN_WIDTH / 8){1'b0}}, leftover_user};
-                    out_reg.last <= 1'b1;
-                    out_reg.valid <= leftover_valid;
+                    out0_reg.data <= {{VLAN_WIDTH{1'b0}}, leftover_data};
+                    out0_reg.keep <= {{(VLAN_WIDTH / 8){1'b0}}, leftover_keep};
+                    out0_reg.user <= {{(VLAN_WIDTH / 8){1'b0}}, leftover_user};
+                    out0_reg.last <= 1'b1;
+                    out0_reg.valid <= leftover_valid;
 
                     leftover_data <= {in.data[DATAW_WIDTH - 1:128], in.data[95:0]};
                     leftover_keep <= {in.keep[DATAW_WIDTH / 8 - 1:16], in.keep[11:0]};
@@ -129,67 +85,61 @@ module frame_datapath_pop_vlan
                 end
                 else if (in.valid)
                 begin
-                    {leftover_data, out_reg.data} <= {in.data, leftover_data};
-                    {leftover_keep, out_reg.keep} <= {in.keep, leftover_keep};
-                    {leftover_user, out_reg.user} <= {in.user, leftover_user};
-                    out_reg.last <= 1'b0;
-                    out_reg.valid <= 1'b1;
+                    {leftover_data, out0_reg.data} <= {in.data, leftover_data};
+                    {leftover_keep, out0_reg.keep} <= {in.keep, leftover_keep};
+                    {leftover_user, out0_reg.user} <= {in.user, leftover_user};
+                    out0_reg.last <= 1'b0;
+                    out0_reg.valid <= 1'b1;
                 end
                 if (in.valid && in.last)
                 begin
                     if (!in.keep[VLAN_WIDTH / 8])
                     begin
                         leftover_valid <= 1'b0;
-                        out_reg.last <= 1'b1;
+                        out0_reg.last <= 1'b1;
                     end
                 end
             end
         end
     end
 
-    reg out_is_first;
+    reg out0_is_first;
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
         begin
-            out_is_first <= 1'b1;
+            out0_is_first <= 1'b1;
         end
         else
         begin
-            if (out.valid && out_ready)
+            if (out0.valid && out0_ready)
             begin
-                out_is_first <= out.last;
+                out0_is_first <= out0.last;
             end
         end
     end
 
     reg [ID_WIDTH - 1:0] dest;
-    reg drop_by_prev;  // Dropped by the previous frame?
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
         begin
             dest <= 0;
-            drop_by_prev <= 1'b0;
         end
         else
         begin
-            if (out_is_first && out.valid && out_ready)
+            if (out0_is_first && out0.valid && out0_ready)
             begin
-                dest <= out.dest;
-                drop_by_prev <= out.drop_next;
+                dest <= out0.dest;
             end
         end
     end
 
-    wire out_ready_orig;
-    assign out_ready = out_ready_orig || !out.valid;
+    wire out0_ready_orig;
+    assign out0_ready = out0_ready_orig || !out0.valid;
 
     // Rewrite dest.
-    wire [ID_WIDTH - 1:0] dest_current = out_is_first ? out.dest : dest;
-
-    frame_data filtered;
-    wire filtered_ready;
+    wire [ID_WIDTH - 1:0] dest_current = out0_is_first ? out0.dest : dest;
 
     frame_filter
     #(
@@ -200,44 +150,22 @@ module frame_datapath_pop_vlan
         .eth_clk(eth_clk),
         .reset(reset),
 
-        .s_data(out.data),
-        .s_keep(out.keep),
-        .s_last(out.last),
-        .s_user(out.user),
+        .s_data(out0.data),
+        .s_keep(out0.keep),
+        .s_last(out0.last),
+        .s_user(out0.user),
         .s_id(dest_current),
-        .s_valid(out.valid),
-        .s_ready(out_ready_orig),
+        .s_valid(out0.valid),
+        .s_ready(out0_ready_orig),
 
-        .drop(out.drop || drop_by_prev),
+        .drop(out0.drop),
 
-        .m_data(filtered.data),
-        .m_keep(filtered.keep),
-        .m_last(filtered.last),
-        .m_user(filtered.user),
-        .m_id(filtered.dest),
-        .m_valid(filtered.valid),
-        .m_ready(filtered_ready)
-    );
-
-    // README: Change the width back. You can remove this.
-    axis_dwidth_converter_down axis_dwidth_converter_down_i(
-        .aclk(eth_clk),
-        .aresetn(~reset),
-
-        .s_axis_tvalid(filtered.valid),
-        .s_axis_tready(filtered_ready),
-        .s_axis_tdata(filtered.data),
-        .s_axis_tkeep(filtered.keep),
-        .s_axis_tlast(filtered.last),
-        .s_axis_tid(filtered.dest),
-        .s_axis_tuser(filtered.user),
-
-        .m_axis_tvalid(m_valid),
-        .m_axis_tready(m_ready),
-        .m_axis_tdata(m_data),
-        .m_axis_tkeep(m_keep),
-        .m_axis_tlast(m_last),
-        .m_axis_tid(m_dest),
-        .m_axis_tuser(m_user)
+        .m_data(out.data),
+        .m_keep(out.keep),
+        .m_last(out.last),
+        .m_user(out.user),
+        .m_id(out.dest),
+        .m_valid(out.valid),
+        .m_ready(out_ready)
     );
 endmodule
