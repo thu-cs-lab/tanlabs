@@ -123,6 +123,7 @@ module egress_wrapper
         .S00_AXIS_TKEEP(fifo[0].keep),
         .S00_AXIS_TLAST(fifo[0].last),
         .S00_AXIS_TID(fifo[0].id),
+        .S00_AXIS_TUSER(fifo[0].user),
 
         .S01_AXIS_TVALID(fifo[1].valid),
         .S01_AXIS_TREADY(fifo_ready[1]),
@@ -130,6 +131,7 @@ module egress_wrapper
         .S01_AXIS_TKEEP(fifo[1].keep),
         .S01_AXIS_TLAST(fifo[1].last),
         .S01_AXIS_TID(fifo[1].id),
+        .S01_AXIS_TUSER(fifo[1].user),
 
         .M00_AXIS_TVALID(mixed.valid),
         .M00_AXIS_TREADY(mixed_ready),
@@ -137,6 +139,7 @@ module egress_wrapper
         .M00_AXIS_TKEEP(mixed.keep),
         .M00_AXIS_TLAST(mixed.last),
         .M00_AXIS_TID(mixed.id),
+        .M00_AXIS_TUSER(mixed.user),
 
         .S00_ARB_REQ_SUPPRESS(1'b0),
         .S01_ARB_REQ_SUPPRESS(1'b0)

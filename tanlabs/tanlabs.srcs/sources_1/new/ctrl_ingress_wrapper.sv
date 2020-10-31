@@ -77,6 +77,12 @@ module ctrl_ingress_wrapper
         .M00_AXIS_ARESETN(~reset),
         .M01_AXIS_ACLK(eth_clk),
         .M01_AXIS_ARESETN(~reset),
+        .M02_AXIS_ACLK(eth_clk),
+        .M02_AXIS_ARESETN(~reset),
+        .M03_AXIS_ACLK(eth_clk),
+        .M03_AXIS_ARESETN(~reset),
+        .M04_AXIS_ACLK(eth_clk),
+        .M04_AXIS_ARESETN(~reset),
 
         .S00_AXIS_TVALID(in.valid),
         .S00_AXIS_TREADY(in_ready),

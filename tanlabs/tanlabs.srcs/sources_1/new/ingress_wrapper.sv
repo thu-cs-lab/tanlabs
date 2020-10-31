@@ -4,7 +4,8 @@
 module ingress_wrapper
 #(
     parameter DATA_WIDTH = 8 * 48,
-    parameter ID_WIDTH = 3
+    parameter ID_WIDTH = 3,
+    parameter ID = 0
 )
 (
     input eth_clk,
@@ -52,6 +53,32 @@ module ingress_wrapper
         && in.data.payload.ip4.proto == PROTO_UDP
         && in.data.payload.ip4.payload.udp.payload == UDP_PAYLOAD_MAGIC; 
 
+    wire new_dest = to_data_plane;
+    reg saved_dest;
+
+    reg is_first;  // If previous is the last one, this is the first one.
+    always @ (posedge eth_clk or posedge reset)
+    begin
+        if (reset)
+        begin
+            is_first <= 1'b1;
+            saved_dest <= 1'b0;
+        end
+        else
+        begin
+            if (in.valid && in_ready)
+            begin
+                if (is_first)
+                begin
+                    saved_dest <= new_dest;
+                end
+                is_first <= in.last;
+            end
+        end
+    end
+
+    wire current_dest = is_first ? new_dest : saved_dest;
+
     // data plane
     frame_data dp;
     wire dp_ready;
@@ -71,7 +98,7 @@ module ingress_wrapper
         .S00_AXIS_TDATA(in.data),
         .S00_AXIS_TKEEP(in.keep),
         .S00_AXIS_TLAST(in.last),
-        .S00_AXIS_TDEST(to_data_plane),
+        .S00_AXIS_TDEST(current_dest),
         .S00_AXIS_TUSER(in.user),
 
         .M00_AXIS_TVALID(out.valid),
@@ -92,6 +119,8 @@ module ingress_wrapper
 
         .S00_DECODE_ERR()
     );
+
+    assign out.id = ID;
 
 //    typedef enum
 //    {

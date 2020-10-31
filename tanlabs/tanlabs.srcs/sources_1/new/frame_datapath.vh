@@ -1,5 +1,9 @@
+`ifndef _TANLABS_SVH_
+`define _TANLABS_SVH_
+
 // 'w' means wide.
 localparam DATAW_WIDTH = 8 * 48;
+localparam ID_WIDTH = 3;
 
 localparam VLAN_WIDTH = 8 * 4;
 
@@ -25,13 +29,13 @@ typedef struct packed
 
 typedef struct packed
 {
-    interface_send_state_t interface_send_state [0:3];
-    interface_recv_state_t interface_recv_state [0:3];
+    interface_send_state_t [3:0] send;
+    interface_recv_state_t [3:0] recv;
 } state_reg_t;
 
 typedef struct packed
 {
-    interface_config_t interface_config [0:3];
+    interface_config_t [3:0] conf;
 } config_reg_t;
 
 typedef struct packed
@@ -108,17 +112,7 @@ typedef struct packed
     // **They are only effective at the first beat.**
     logic [ID_WIDTH - 1:0] dest;  // The egress interface.
     logic drop;  // Drop this frame (i.e., this beat and the following beats till the last)?
-    logic dont_touch;  // Do not touch this beat!
-
-    // Drop the next frame? It is useful when you need to shrink a frame
-    // (e.g., replace an IPv4 packet to an ARP request).
-    // You can do so by setting both last and drop_next.
-    logic drop_next;
-
-    // README: Your code here.
 } frame_data;
-
-localparam ID_CPU = 3'd4;  // The interface ID of CPU is 4.
 
 localparam ETHERTYPE_ARP = 16'h0608;
 localparam ETHERTYPE_IP4 = 16'h0008;
@@ -128,4 +122,6 @@ localparam PROTO_UDP = 8'd17;
 localparam UDP_PAYLOAD_MAGIC = 48'h323232445754;  // TWD222
 
 localparam MY_MAC = 48'h303032445754;  // TWD200
-localparan MY_IP = 32'h6408080a;  // 10.8.8.100
+localparam MY_IP = 32'h6408080a;  // 10.8.8.100
+
+`endif

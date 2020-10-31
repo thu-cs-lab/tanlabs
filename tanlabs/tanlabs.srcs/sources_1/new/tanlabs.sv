@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+`include "frame_datapath.vh"
 
 /* Tsinghua Advanced Networking Labs */
 
@@ -34,10 +35,10 @@ module tanlabs(
 
     assign sfp_rs = 8'hff;
 
-    wire [4:0] debug_ingress_interconnect_ready;
-    wire debug_datapath_fifo_ready;
-    wire debug_egress_interconnect_ready;
-    wire debug_rgmii_clk_conv_ready;
+//    wire [4:0] debug_ingress_interconnect_ready;
+//    wire debug_datapath_fifo_ready;
+//    wire debug_egress_interconnect_ready;
+//    wire debug_rgmii_clk_conv_ready;
 
     wire reset_in = ~RST;
     wire locked;
@@ -379,257 +380,82 @@ module tanlabs(
     );
     assign sfp_led = out_led[3:0];
 
-    localparam DATA_WIDTH = 64;
+    localparam DATA_WIDTH = 8 * 48;
     localparam ID_WIDTH = 3;
 
-    wire [DATA_WIDTH - 1:0] eth_rx_data;
-    wire [DATA_WIDTH / 8 - 1:0] eth_rx_keep;
-    wire eth_rx_last;
-    wire [DATA_WIDTH / 8 - 1:0] eth_rx_user;
-    wire [ID_WIDTH - 1:0] eth_rx_id;
-    wire eth_rx_valid;
+    state_reg_t state_reg;
+    config_reg_t config_reg;
 
-    axis_interconnect_ingress axis_interconnect_ingress_i(
-        .ACLK(eth_clk),
-        .ARESETN(~reset_eth),
+    // control plane signals
+    frame_data cp_rx [0:3];
+    wire [3:0] cp_rx_ready;
+    frame_data cp_tx [0:3];
+    wire [3:0] cp_tx_ready;
 
-        .S00_AXIS_ACLK(eth_clk),
-        .S00_AXIS_ARESETN(~reset_eth),
-        .S00_AXIS_TVALID(eth_rx8_valid[0]),
-        .S00_AXIS_TREADY(debug_ingress_interconnect_ready[0]),
-        .S00_AXIS_TDATA(eth_rx8_data[0]),
-        .S00_AXIS_TKEEP(1'b1),
-        .S00_AXIS_TLAST(eth_rx8_last[0]),
-        .S00_AXIS_TID(3'd0),
-        .S00_AXIS_TUSER(eth_rx8_user[0]),
-
-        .S01_AXIS_ACLK(eth_clk),
-        .S01_AXIS_ARESETN(~reset_eth),
-        .S01_AXIS_TVALID(eth_rx8_valid[1]),
-        .S01_AXIS_TREADY(debug_ingress_interconnect_ready[1]),
-        .S01_AXIS_TDATA(eth_rx8_data[1]),
-        .S01_AXIS_TKEEP(1'b1),
-        .S01_AXIS_TLAST(eth_rx8_last[1]),
-        .S01_AXIS_TID(3'd1),
-        .S01_AXIS_TUSER(eth_rx8_user[1]),
-
-        .S02_AXIS_ACLK(eth_clk),
-        .S02_AXIS_ARESETN(~reset_eth),
-        .S02_AXIS_TVALID(eth_rx8_valid[2]),
-        .S02_AXIS_TREADY(debug_ingress_interconnect_ready[2]),
-        .S02_AXIS_TDATA(eth_rx8_data[2]),
-        .S02_AXIS_TKEEP(1'b1),
-        .S02_AXIS_TLAST(eth_rx8_last[2]),
-        .S02_AXIS_TID(3'd2),
-        .S02_AXIS_TUSER(eth_rx8_user[2]),
-
-        .S03_AXIS_ACLK(eth_clk),
-        .S03_AXIS_ARESETN(~reset_eth),
-        .S03_AXIS_TVALID(eth_rx8_valid[3]),
-        .S03_AXIS_TREADY(debug_ingress_interconnect_ready[3]),
-        .S03_AXIS_TDATA(eth_rx8_data[3]),
-        .S03_AXIS_TKEEP(1'b1),
-        .S03_AXIS_TLAST(eth_rx8_last[3]),
-        .S03_AXIS_TID(3'd3),
-        .S03_AXIS_TUSER(eth_rx8_user[3]),
-
-        .S04_AXIS_ACLK(eth_clk),
-        .S04_AXIS_ARESETN(~reset_eth),
-        .S04_AXIS_TVALID(eth_rx8_valid[4]),
-        .S04_AXIS_TREADY(debug_ingress_interconnect_ready[4]),
-        .S04_AXIS_TDATA(eth_rx8_data[4]),
-        .S04_AXIS_TKEEP(1'b1),
-        .S04_AXIS_TLAST(eth_rx8_last[4]),
-        .S04_AXIS_TID(3'd4),
-        .S04_AXIS_TUSER(eth_rx8_user[4]),
-
-        .M00_AXIS_ACLK(eth_clk),
-        .M00_AXIS_ARESETN(~reset_eth),
-        .M00_AXIS_TVALID(eth_rx_valid),
-        .M00_AXIS_TREADY(1'b1),
-        .M00_AXIS_TDATA(eth_rx_data),
-        .M00_AXIS_TKEEP(eth_rx_keep),
-        .M00_AXIS_TLAST(eth_rx_last),
-        .M00_AXIS_TID(eth_rx_id),
-        .M00_AXIS_TUSER(eth_rx_user),
-
-        .S00_ARB_REQ_SUPPRESS(0),
-        .S01_ARB_REQ_SUPPRESS(0),
-        .S02_ARB_REQ_SUPPRESS(0),
-        .S03_ARB_REQ_SUPPRESS(0),
-        .S04_ARB_REQ_SUPPRESS(0),
-
-        .S00_FIFO_DATA_COUNT(),
-        .S01_FIFO_DATA_COUNT(),
-        .S02_FIFO_DATA_COUNT(),
-        .S03_FIFO_DATA_COUNT(),
-        .S04_FIFO_DATA_COUNT()
-    );
-
-    wire [DATA_WIDTH - 1:0] dp_rx_data;
-    wire [DATA_WIDTH / 8 - 1:0] dp_rx_keep;
-    wire dp_rx_last;
-    wire [DATA_WIDTH / 8 - 1:0] dp_rx_user;
-    wire [ID_WIDTH - 1:0] dp_rx_id;
-    wire dp_rx_valid;
-    wire dp_rx_ready;
-
-    frame_datapath_fifo
-    #(
-        .ENABLE(1),  // README: enable this if your datapath may block.
-        .DATA_WIDTH(DATA_WIDTH),
-        .ID_WIDTH(ID_WIDTH)
-    )
-    frame_datapath_fifo_i(
-        .eth_clk(eth_clk),
-        .reset(reset_eth),
-
-        .s_data(eth_rx_data),
-        .s_keep(eth_rx_keep),
-        .s_last(eth_rx_last),
-        .s_user(eth_rx_user),
-        .s_id(eth_rx_id),
-        .s_valid(eth_rx_valid),
-        .s_ready(debug_datapath_fifo_ready),
-
-        .m_data(dp_rx_data),
-        .m_keep(dp_rx_keep),
-        .m_last(dp_rx_last),
-        .m_user(dp_rx_user),
-        .m_id(dp_rx_id),
-        .m_valid(dp_rx_valid),
-        .m_ready(dp_rx_ready)
-    );
-
-    wire [DATA_WIDTH - 1:0] dp_tx_data;
-    wire [DATA_WIDTH / 8 - 1:0] dp_tx_keep;
-    wire dp_tx_last;
-    wire [DATA_WIDTH / 8 - 1:0] dp_tx_user;
-    wire [ID_WIDTH - 1:0] dp_tx_dest;
-    wire dp_tx_valid;
-
-    // README: Instantiate your datapath.
-    frame_datapath
-    #(
-        .DATA_WIDTH(DATA_WIDTH),
-        .ID_WIDTH(ID_WIDTH)
-    )
-    frame_datapath_i(
-        .eth_clk(eth_clk),
-        .reset(reset_eth),
-
-        .s_data(dp_rx_data),
-        .s_keep(dp_rx_keep),
-        .s_last(dp_rx_last),
-        .s_user(dp_rx_user),
-        .s_id(dp_rx_id),
-        .s_valid(dp_rx_valid),
-        .s_ready(dp_rx_ready),
-
-        .m_data(dp_tx_data),
-        .m_keep(dp_tx_keep),
-        .m_last(dp_tx_last),
-        .m_user(dp_tx_user),
-        .m_dest(dp_tx_dest),
-        .m_valid(dp_tx_valid),
-        .m_ready(1'b1)
-
-        // README: You will need to add some signals for your CPU to control the datapath,
-        // or access the forwarding table or the address resolution cache.
-    );
-
-    wire [DATA_WIDTH - 1:0] eth_tx_data [0:4];
-    wire [DATA_WIDTH / 8 - 1:0] eth_tx_keep [0:4];
-    wire eth_tx_last [0:4];
-    wire eth_tx_ready [0:4];
-    wire [DATA_WIDTH / 8 - 1:0] eth_tx_user [0:4];
-    wire eth_tx_valid [0:4];
-
-    axis_interconnect_egress axis_interconnect_egress_i(
-        .ACLK(eth_clk),
-        .ARESETN(~reset_eth),
-
-        .S00_AXIS_ACLK(eth_clk),
-        .S00_AXIS_ARESETN(~reset_eth),
-        .S00_AXIS_TVALID(dp_tx_valid),
-        .S00_AXIS_TREADY(debug_egress_interconnect_ready),
-        .S00_AXIS_TDATA(dp_tx_data),
-        .S00_AXIS_TKEEP(dp_tx_keep),
-        .S00_AXIS_TLAST(dp_tx_last),
-        .S00_AXIS_TDEST(dp_tx_dest),
-        .S00_AXIS_TUSER(dp_tx_user),
-
-        .M00_AXIS_ACLK(eth_clk),
-        .M00_AXIS_ARESETN(~reset_eth),
-        .M00_AXIS_TVALID(eth_tx_valid[0]),
-        .M00_AXIS_TREADY(eth_tx_ready[0]),
-        .M00_AXIS_TDATA(eth_tx_data[0]),
-        .M00_AXIS_TKEEP(eth_tx_keep[0]),
-        .M00_AXIS_TLAST(eth_tx_last[0]),
-        .M00_AXIS_TDEST(),
-        .M00_AXIS_TUSER(eth_tx_user[0]),
-
-        .M01_AXIS_ACLK(eth_clk),
-        .M01_AXIS_ARESETN(~reset_eth),
-        .M01_AXIS_TVALID(eth_tx_valid[1]),
-        .M01_AXIS_TREADY(eth_tx_ready[1]),
-        .M01_AXIS_TDATA(eth_tx_data[1]),
-        .M01_AXIS_TKEEP(eth_tx_keep[1]),
-        .M01_AXIS_TLAST(eth_tx_last[1]),
-        .M01_AXIS_TDEST(),
-        .M01_AXIS_TUSER(eth_tx_user[1]),
-
-        .M02_AXIS_ACLK(eth_clk),
-        .M02_AXIS_ARESETN(~reset_eth),
-        .M02_AXIS_TVALID(eth_tx_valid[2]),
-        .M02_AXIS_TREADY(eth_tx_ready[2]),
-        .M02_AXIS_TDATA(eth_tx_data[2]),
-        .M02_AXIS_TKEEP(eth_tx_keep[2]),
-        .M02_AXIS_TLAST(eth_tx_last[2]),
-        .M02_AXIS_TDEST(),
-        .M02_AXIS_TUSER(eth_tx_user[2]),
-
-        .M03_AXIS_ACLK(eth_clk),
-        .M03_AXIS_ARESETN(~reset_eth),
-        .M03_AXIS_TVALID(eth_tx_valid[3]),
-        .M03_AXIS_TREADY(eth_tx_ready[3]),
-        .M03_AXIS_TDATA(eth_tx_data[3]),
-        .M03_AXIS_TKEEP(eth_tx_keep[3]),
-        .M03_AXIS_TLAST(eth_tx_last[3]),
-        .M03_AXIS_TDEST(),
-        .M03_AXIS_TUSER(eth_tx_user[3]),
-
-        .M04_AXIS_ACLK(eth_clk),
-        .M04_AXIS_ARESETN(~reset_eth),
-        .M04_AXIS_TVALID(eth_tx_valid[4]),
-        .M04_AXIS_TREADY(eth_tx_ready[4]),
-        .M04_AXIS_TDATA(eth_tx_data[4]),
-        .M04_AXIS_TKEEP(eth_tx_keep[4]),
-        .M04_AXIS_TLAST(eth_tx_last[4]),
-        .M04_AXIS_TDEST(),
-        .M04_AXIS_TUSER(eth_tx_user[4]),
-
-        .S00_DECODE_ERR()
-    );
+    frame_data ctrl_rx;
+    wire ctrl_rx_ready;
+    frame_data ctrl_tx;
+    wire ctrl_tx_ready;
 
     generate
-        for (i = 0; i < 5; i = i + 1)
+        for (i = 0; i < 4; i = i + 1)
         begin
-            egress_wrapper
+            ingress_wrapper
+            #(
+                .DATA_WIDTH(DATA_WIDTH),
+                .ID_WIDTH(ID_WIDTH),
+                .ID(i)
+            )
+            ingress_wrapper_i(
+                .eth_clk(eth_clk),
+                .reset(reset_eth),
+
+                .s_data(eth_rx8_data[i]),
+                .s_last(eth_rx8_last[i]),
+                .s_user(eth_rx8_user[i]),
+                .s_valid(eth_rx8_valid[i]),
+
+                .out(cp_rx[i]),
+                .out_ready(cp_rx_ready[i]),
+
+                .interface_config(config_reg.conf[i]),
+                .interface_state(state_reg.recv[i])
+            );
+
+            frame_data gen;
+            wire gen_ready;
+
+            frame_gen
             #(
                 .DATA_WIDTH(DATA_WIDTH),
                 .ID_WIDTH(ID_WIDTH)
+            )
+            frame_gen_i(
+                .eth_clk(eth_clk),
+                .reset(reset_eth),
+
+                .out(gen),
+                .out_ready(gen_ready),
+
+                .interface_config(config_reg.conf[i]),
+                .interface_state(state_reg.send[i])
+            );
+
+            egress_wrapper
+            #(
+                .DATA_WIDTH(DATA_WIDTH),
+                .ID_WIDTH(ID_WIDTH),
+                .ENABLE_FIFO(2'b01),
+                .ENABLE_VLAN_TAGGER(0)
             )
             egress_wrapper_i(
                 .eth_clk(eth_clk),
                 .reset(reset_eth),
 
-                .s_data(eth_tx_data[i]),
-                .s_keep(eth_tx_keep[i]),
-                .s_last(eth_tx_last[i]),
-                .s_user(eth_tx_user[i]),
-                .s_valid(eth_tx_valid[i]),
-                .s_ready(eth_tx_ready[i]),
+                .in0(cp_tx[i]),
+                .in0_ready(cp_tx_ready[i]),
+                .in1(gen),
+                .in1_ready(gen_ready),
 
                 .m_data(eth_tx8_data[i]),
                 .m_last(eth_tx8_last[i]),
@@ -639,6 +465,102 @@ module tanlabs(
             );
         end
     endgenerate
+
+    ctrl_ingress_wrapper
+    #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .ID_WIDTH(ID_WIDTH)
+    )
+    ctrl_ingress_wrapper_i(
+        .eth_clk(eth_clk),
+        .reset(reset_eth),
+
+        .s_data(eth_rx8_data[4]),
+        .s_last(eth_rx8_last[4]),
+        .s_user(eth_rx8_user[4]),
+        .s_valid(eth_rx8_valid[4]),
+
+        .out0(cp_tx[0]),
+        .out0_ready(cp_tx_ready[0]),
+        .out1(cp_tx[1]),
+        .out1_ready(cp_tx_ready[1]),
+        .out2(cp_tx[2]),
+        .out2_ready(cp_tx_ready[2]),
+        .out3(cp_tx[3]),
+        .out3_ready(cp_tx_ready[3]),
+
+        .out_ctrl(ctrl_rx),
+        .out_ctrl_ready(ctrl_rx_ready)
+    );
+
+    frame_data cp_mixed_rx;
+    wire cp_mixed_rx_ready;
+
+    arbiter_rr_fifo
+    #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .ID_WIDTH(ID_WIDTH),
+        .ENABLE_FIFO(4'b1111)
+    )
+    arbiter_rr_fifo_i(
+        .eth_clk(eth_clk),
+        .reset(reset_eth),
+
+        .in0(cp_rx[0]),
+        .in0_ready(cp_rx_ready[0]),
+        .in1(cp_rx[1]),
+        .in1_ready(cp_rx_ready[1]),
+        .in2(cp_rx[2]),
+        .in2_ready(cp_rx_ready[2]),
+        .in3(cp_rx[3]),
+        .in3_ready(cp_rx_ready[3]),
+
+        .out(cp_mixed_rx),
+        .out_ready(cp_mixed_rx_ready)
+    );
+
+    egress_wrapper
+    #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .ID_WIDTH(ID_WIDTH),
+        .ENABLE_FIFO(2'b00),
+        .ENABLE_VLAN_TAGGER(1)
+    )
+    egress_wrapper_i(
+        .eth_clk(eth_clk),
+        .reset(reset_eth),
+
+        .in0(ctrl_tx),
+        .in0_ready(ctrl_tx_ready),
+        .in1(cp_mixed_rx),
+        .in1_ready(cp_mixed_rx_ready),
+
+        .m_data(eth_tx8_data[4]),
+        .m_last(eth_tx8_last[4]),
+        .m_user(eth_tx8_user[4]),
+        .m_valid(eth_tx8_valid[4]),
+        .m_ready(eth_tx8_ready[4])
+    );
+
+    ctrl
+    #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .ID_WIDTH(ID_WIDTH),
+        .ID(4)
+    )
+    ctrl_i(
+        .eth_clk(eth_clk),
+        .reset(reset_eth),
+
+        .in(ctrl_rx),
+        .in_ready(ctrl_rx_ready),
+
+        .out(ctrl_tx),
+        .out_ready(ctrl_tx_ready),
+
+        .config_reg(config_reg),
+        .state_reg(state_reg)
+    );
 
 //    wire [7:0] debug_led;
 //    led_delayer led_delayer_debug_i1(
