@@ -380,6 +380,17 @@ module tanlabs(
     );
     assign sfp_led = out_led[3:0];
 
+    // Tester Interconnections
+
+    wire [63:0] random;
+
+    lfsr lfsr_i(
+        .clk(eth_clk),
+        .reset(reset_eth),
+
+        .o(random)
+    );
+
     localparam DATA_WIDTH = 8 * 48;
     localparam ID_WIDTH = 3;
 

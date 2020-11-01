@@ -83,41 +83,273 @@ module ctrl
 
     assign fifo.dest = 0;
 
+    function [15:0] checksum_reduce;
+        input [31:0] sum;
+        reg c;
+        reg [15:0] sum16;
+    begin
+        {c, sum16} = 17'(sum[15:0]) + 17'(sum[31:16]);
+        checksum_reduce = sum16 + 16'(c);
+    end
+    endfunction
+
     typedef enum
     {
-        ST_RECV
+        ST_RECV,
+        ST_HANDLE,
+        ST_HANDLE_ARP,
+        ST_HANDLE_UDP,
+        ST_SEND_ARP,
+        ST_PREPARE_UDP,
+        ST_SEND_UDP,
+        ST_SEND_UDP_2
     } state_t;
     state_t state;
+
+    reg is_arp, is_udp, drop;
+    reg [47:0] client_mac;
+    reg [31:0] client_ip;
+    reg [15:0] client_port;
+    reg is_write;
+    reg [63:0] regid;
+    reg [63:0] regvalue;
+    reg [31:0] checksum;
+    reg [31:0] checksum_ip4;
+    reg [15:0] counter;
+
+    wire [63:0] regid_hton = {<<8{regid}};
+    wire [63:0] regvalue_hton = {<<8{regvalue}};
+
+    assign fifo_ready = state == ST_RECV || !fifo.valid;
 
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
         begin
             state <= ST_RECV;
+            is_arp <= 1'b0;
+            is_udp <= 1'b0;
+            drop <= 1'b0;
+            client_mac <= 0;
+            client_ip <= 0;
+            client_port <= 0;
+            is_write <= 1'b0;
+            regid <= 0;
+            regvalue <= 0;
+            checksum <= 0;
+            checksum_ip4 <= 0;
+            counter <= 0;
+            out <= 0;
+            out.id <= ID;
         end
         else
         begin
             case (state)
             ST_RECV:
             begin
-                
+                if (fifo.valid)
+                begin
+                    if (counter == 0)
+                    begin
+                        if (fifo.data.dst[0] == 1'b1 || fifo.data.dst == MY_MAC)
+                        begin
+                            client_mac <= fifo.data.src;
+                            if (fifo.data.ethertype == ETHERTYPE_ARP
+                                && fifo.data.payload.arp.magic == ARP_MAGIC
+                                && fifo.data.payload.arp.op == ARP_OPER_REQUEST
+                                && fifo.data.payload.arp.tpa == MY_IP)
+                            begin
+                                is_arp <= 1'b1;
+                                client_ip <= fifo.data.payload.arp.spa;
+                                if (!fifo.keep[41])
+                                begin
+                                    drop <= 1'b1;
+                                end
+                            end
+                            else if (fifo.data.ethertype == ETHERTYPE_IP4
+                                     && fifo.data.payload.ip4.version == 4'd4
+                                     && fifo.data.payload.ip4.ihl == 4'd5
+                                     && fifo.data.payload.ip4.total_len == 16'h2c00  // 20 + 8 + 16
+                                     && fifo.data.payload.ip4.proto == PROTO_UDP
+                                     && fifo.data.payload.ip4.dst == MY_IP
+                                     && fifo.data.payload.ip4.payload.udp.dst == MY_PORT
+                                     && fifo.data.payload.ip4.payload.udp.len == 16'h1800)
+                            begin
+                                is_arp <= 1'b0;
+                                client_ip <= fifo.data.payload.ip4.src;
+                                client_port <= fifo.data.payload.ip4.payload.udp.src;
+                                is_write <= fifo.data.payload.ip4.payload.udp.payload[7];
+                                regid[62:16] <= {<<8{fifo.data.payload.ip4.payload.udp.payload}};
+                                checksum <=
+                                    (32'(MY_IP[15:0]) + 32'(MY_IP[31:16]) + {16'd0, PROTO_UDP, 8'd0} + 32'h1800 + 32'h1800 + 32'(MY_PORT))
+                                    + ((32'(fifo.data.payload.ip4.src[15:0]) + 32'(fifo.data.payload.ip4.src[31:16])) 
+                                       + (32'(fifo.data.payload.ip4.payload.udp.src) + 32'(fifo.data.payload.ip4.payload.udp.checksum)))
+                                    + ((32'(fifo.data.payload.ip4.payload.udp.payload[15:0]) + 32'(fifo.data.payload.ip4.payload.udp.payload[31:16]))
+                                       + 32'(fifo.data.payload.ip4.payload.udp.payload[47:32]));
+                                if (fifo.last)
+                                begin
+                                    drop <= 1'b1;
+                                end
+                            end
+                            else
+                            begin
+                                drop <= 1'b1;
+                            end
+                        end
+                        else
+                        begin
+                            drop <= 1'b1;
+                        end
+                    end
+                    else if (counter == 1)
+                    begin
+                        if (!drop)
+                        begin
+                            if (!is_arp)
+                            begin
+                                regid[15:0] <= {<<8{fifo.data[15:0]}};
+                                regvalue <= {<<8{fifo.data[16 +: 64]}};
+
+                                checksum <= checksum + 32'(fifo.data[79:64])
+                                    + ((32'(fifo.data[15:0]) + 32'(fifo.data[31:16]))
+                                       + (32'(fifo.data[47:32]) + 32'(fifo.data[63:48])));
+
+                                if (!fifo.keep[9])
+                                begin
+                                    drop <= 1'b1;
+                                end
+                            end
+                        end
+                    end
+                    counter <= counter + 1;
+                    if (fifo.last)
+                    begin
+                        counter <= 0;
+                        state <= ST_HANDLE;
+                    end
+                end
+            end
+            ST_HANDLE:
+            begin
+                if (drop)
+                begin
+                    state <= ST_RECV;
+                end
+                else if (is_arp)
+                begin
+                    state <= ST_HANDLE_ARP;
+                end
+                else
+                begin
+                    $display("checksum: %04x", checksum_reduce(checksum));
+                    if (checksum_reduce(checksum) == 16'hffff)
+                    begin
+                        state <= ST_HANDLE_UDP;
+                    end
+                    else
+                    begin
+                        $display("drop UDP (checksum wrong)");
+                        state <= ST_RECV;
+                    end
+                end
+            end
+            ST_HANDLE_ARP:
+            begin
+                $display("handle ARP");
+                out <= 0;
+                out.valid <= 1'b1;
+                out.keep <= {6'd0, {42{1'b1}}};
+                out.last <= 1'b1;
+                out.data.ethertype <= ETHERTYPE_ARP;
+                out.data.dst <= client_mac;
+                out.data.src <= MY_MAC;
+                out.data.payload.arp.magic <= ARP_MAGIC;
+                out.data.payload.arp.op <= ARP_OPER_REPLY;
+                out.data.payload.arp.spa <= MY_IP;
+                out.data.payload.arp.sha <= MY_MAC;
+                out.data.payload.arp.tpa <= client_ip;
+                out.data.payload.arp.tha <= client_mac;
+                state <= ST_SEND_ARP;
+            end
+            ST_SEND_ARP:
+            begin
+                if (out_ready)
+                begin
+                    out.valid <= 1'b0;
+                    state <= ST_RECV;
+                end
+            end
+            ST_HANDLE_UDP:
+            begin
+                $display("handle UDP");
+                // TODO
+
+                checksum <=
+                    ((32'(MY_IP[15:0]) + 32'(MY_IP[31:16]) + {16'd0, PROTO_UDP, 8'd0} + 32'h1800 + 32'h1800 + 32'(MY_PORT))
+                     + 32'(client_port)
+                     + (32'(client_ip[15:0]) + 32'(client_ip[31:16])))
+                    + ((32'(regid_hton[15:0]) + 32'(regid_hton[31:16]))
+                       + (32'(regid_hton[47:32]) + 32'(regid_hton[63:48])))
+                    + ((32'(regvalue_hton[15:0]) + 32'(regvalue_hton[31:16]))
+                       + (32'(regvalue_hton[47:32]) + 32'(regvalue_hton[63:48])));
+
+                checksum_ip4 <=
+                    32'h0045 + 32'h2c00 + {16'b0, 8'(PROTO_UDP), 8'd64} + 32'(MY_IP[15:0]) + 32'(MY_IP[31:16])
+                    + (32'(client_ip[15:0]) + 32'(client_ip[31:16]));
+
+                state <= ST_PREPARE_UDP;
+            end
+            ST_PREPARE_UDP:
+            begin
+                out <= 0;
+                out.valid <= 1'b1;
+                out.keep <= {48{1'b1}};
+                out.last <= 1'b0;
+                out.data.ethertype <= ETHERTYPE_IP4;
+                out.data.dst <= client_mac;
+                out.data.src <= MY_MAC;
+                out.data.payload.ip4.version <= 4'd4;
+                out.data.payload.ip4.ihl <= 4'd5;
+                out.data.payload.ip4.total_len <= 16'h2c00;
+                out.data.payload.ip4.ttl <= 8'd64;
+                out.data.payload.ip4.proto <= PROTO_UDP;
+                out.data.payload.ip4.checksum <= ~checksum_reduce(checksum_ip4);
+                out.data.payload.ip4.src <= MY_IP;
+                out.data.payload.ip4.dst <= client_ip;
+                out.data.payload.ip4.payload.udp.src <= MY_PORT;
+                out.data.payload.ip4.payload.udp.dst <= client_port;
+                out.data.payload.ip4.payload.udp.len <= 16'h1800;
+                out.data.payload.ip4.payload.udp.checksum <= ~checksum_reduce(checksum);
+                out.data.payload.ip4.payload.udp.payload <= {<<8{regid[63:16]}};
+                state <= ST_SEND_UDP;
+            end
+            ST_SEND_UDP:
+            begin
+                if (out_ready)
+                begin
+                    out.data <= {regvalue_hton, regid_hton[63:48]};
+                    out.keep <= {38'd0, {10{1'b1}}};
+                    out.last <= 1'b1;
+                    state <= ST_SEND_UDP_2;
+                end
+            end
+            ST_SEND_UDP_2:
+            begin
+                if (out_ready)
+                begin
+                    out.valid <= 1'b0;
+                    state <= ST_RECV;
+                end
             end
             default:
             begin
                 state <= ST_RECV;
             end
             endcase
+            out.id <= ID;
         end
     end
 
-    always @ (*)
-    begin
-        // FIXME
-        out = fifo;
-        out.id = ID;
-    end
-
-    assign fifo_ready = out_ready;
     assign config_reg = 0;
 
 endmodule

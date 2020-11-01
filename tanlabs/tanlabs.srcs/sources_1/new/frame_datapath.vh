@@ -117,10 +117,15 @@ localparam ETHERTYPE_ARP = 16'h0608;
 localparam ETHERTYPE_IP4 = 16'h0008;
 localparam ETHERTYPE_VLAN = 16'h0081;
 
+localparam ARP_MAGIC = 48'h040600080100;
+localparam ARP_OPER_REQUEST = 16'h0100;
+localparam ARP_OPER_REPLY = 16'h0200;
+
 localparam PROTO_UDP = 8'd17;
 localparam UDP_PAYLOAD_MAGIC = 48'h323232445754;  // TWD222
 
 localparam MY_MAC = 48'h303032445754;  // TWD200
 localparam MY_IP = 32'h6408080a;  // 10.8.8.100
+localparam MY_PORT = 16'h60ea;  // 60000
 
 `endif

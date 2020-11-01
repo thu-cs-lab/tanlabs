@@ -22,6 +22,8 @@ MAC_TESTER = '54:45:53:54:5f:30'
 MAC_DUT = '54:57:44:32:30:30'
 IP_TESTER = '10.8.8.2'
 IP_DUT = '10.8.8.100'  # Device under test.
+PORT_TESTER = 12345
+PORT_DUT = 60000
 
 # frames.txt format:
 # <Ingress Interface ID> <Frame Length> <Frame Data...>
@@ -43,10 +45,21 @@ def write_frame(iface, f):
   if SEND_FRAMES:
     sendp(f, iface='tanlabs-veth{}'.format(iface))
 
-
 # ARP request test.
-write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST) /
-            ARP(op='who-has', hwsrc=MAC_TESTER, psrc=IP_TESTER, hwdst=MAC_BROADCAST, pdst=IP_DUT))
+for i in range(10):
+  write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST) /
+              ARP(op='who-has', hwsrc=MAC_TESTER, psrc=IP_TESTER, hwdst=MAC_BROADCAST, pdst=IP_DUT))
+
+# UDP test (checksum wrong)
+write_frame(0, Ether(src=MAC_TESTER, dst=MAC_DUT) /
+            IP(src=IP_TESTER, dst=IP_DUT) /
+            UDP(sport=PORT_TESTER, dport=PORT_DUT, chksum=0x1234) /
+            (b'\xAA' * 16))
+
+write_frame(0, Ether(src=MAC_TESTER, dst=MAC_DUT) /
+            IP(src=IP_TESTER, dst=IP_DUT) /
+            UDP(sport=PORT_TESTER, dport=PORT_DUT) /
+            (struct.pack('>QQ', 1234567890 | (1 << 63), 9876543210)))
 
 # You can construct more frames to test your datapath.
 
