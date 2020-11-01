@@ -51,8 +51,6 @@ module tb_ctrl
         .m_ready(in_ready)
     );
 
-
-    // README: Instantiate your datapath.
     ctrl dut(
         .eth_clk(clk_125M),
         .reset(reset),

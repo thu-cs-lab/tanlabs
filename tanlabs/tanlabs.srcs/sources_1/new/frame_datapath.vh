@@ -7,7 +7,6 @@ localparam ID_WIDTH = 3;
 
 localparam VLAN_WIDTH = 8 * 4;
 
-// README: Your code here.
 typedef struct packed
 {
     logic [63:0] nbytes;

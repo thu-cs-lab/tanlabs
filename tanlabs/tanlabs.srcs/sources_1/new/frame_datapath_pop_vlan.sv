@@ -104,42 +104,31 @@ module frame_datapath_pop_vlan
     end
 
     reg out0_is_first;
-    always @ (posedge eth_clk or posedge reset)
-    begin
-        if (reset)
-        begin
-            out0_is_first <= 1'b1;
-        end
-        else
-        begin
-            if (out0.valid && out0_ready)
-            begin
-                out0_is_first <= out0.last;
-            end
-        end
-    end
-
     reg [ID_WIDTH - 1:0] dest;
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
         begin
+            out0_is_first <= 1'b1;
             dest <= 0;
         end
         else
         begin
-            if (out0_is_first && out0.valid && out0_ready)
+            if (out0.valid && out0_ready)
             begin
-                dest <= out0.dest;
+                if (out0_is_first)
+                begin
+                    dest <= out0.dest;
+                end
+                out0_is_first <= out0.last;
             end
         end
     end
 
+    wire [ID_WIDTH - 1:0] dest_current = out0_is_first ? out0.dest : dest;
+
     wire out0_ready_orig;
     assign out0_ready = out0_ready_orig || !out0.valid;
-
-    // Rewrite dest.
-    wire [ID_WIDTH - 1:0] dest_current = out0_is_first ? out0.dest : dest;
 
     frame_filter
     #(
