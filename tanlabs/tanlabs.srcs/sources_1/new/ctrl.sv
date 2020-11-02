@@ -98,8 +98,9 @@ module ctrl
         ST_RECV,
         ST_HANDLE,
         ST_HANDLE_ARP,
-        ST_HANDLE_UDP,
         ST_SEND_ARP,
+        ST_HANDLE_UDP,
+        ST_PREPARE_CHECKSUM,
         ST_PREPARE_UDP,
         ST_SEND_UDP,
         ST_SEND_UDP_2
@@ -116,6 +117,22 @@ module ctrl
     reg [31:0] checksum;
     reg [31:0] checksum_ip4;
     reg [15:0] counter;
+
+    reg [63:0] ticks;
+
+    always @ (posedge eth_clk or posedge reset)
+    begin
+        if (reset)
+        begin
+            ticks <= 0;
+        end
+        else
+        begin
+            ticks <= ticks + 1;
+        end
+    end
+
+    reg [63:0] scratch;
 
     wire [63:0] regid_hton = {<<8{regid}};
     wire [63:0] regvalue_hton = {<<8{regvalue}};
@@ -141,6 +158,9 @@ module ctrl
             counter <= 0;
             out <= 0;
             out.id <= ID;
+
+            scratch <= 0;
+            config_reg <= 0;
         end
         else
         begin
@@ -149,9 +169,10 @@ module ctrl
             begin
                 if (fifo.valid)
                 begin
-                    // TODO:
-                    // if (|(fifo.user & fifo.keep))
-                    // drop <= 1'b1;
+                    if (|(fifo.user & fifo.keep))
+                    begin
+                        drop <= 1'b1;
+                    end
                     if (counter == 0)
                     begin
                         if (fifo.data.dst[0] == 1'b1 || fifo.data.dst == MY_MAC)
@@ -286,8 +307,36 @@ module ctrl
             ST_HANDLE_UDP:
             begin
                 $display("handle UDP");
-                // TODO
-
+                // TODO: read/write registers
+                if (!is_write)
+                begin
+                    case (regid)
+                    REGID_TICKS: regvalue <= ticks;
+                    REGID_SCRATCH: regvalue <= scratch;
+                    default:
+                    begin
+                        // no such register
+                        regid <= REGID_INVALID;
+                        regvalue <= 0;
+                    end
+                    endcase
+                end
+                else
+                begin
+                    case (regid)
+                    REGID_SCRATCH: scratch <= regvalue;
+                    default:
+                    begin
+                        // no such writeable register
+                        regid <= REGID_INVALID;
+                        regvalue <= 0;
+                    end
+                    endcase
+                end
+                state <= ST_PREPARE_CHECKSUM;
+            end
+            ST_PREPARE_CHECKSUM:
+            begin
                 checksum <=
                     ((32'(MY_IP[15:0]) + 32'(MY_IP[31:16]) + {16'd0, PROTO_UDP, 8'd0} + 32'h1800 + 32'h1800 + 32'(MY_PORT))
                      + 32'(client_port)
@@ -324,7 +373,7 @@ module ctrl
                 out.data.payload.ip4.payload.udp.dst <= client_port;
                 out.data.payload.ip4.payload.udp.len <= 16'h1800;
                 out.data.payload.ip4.payload.udp.checksum <= ~checksum_reduce(checksum);
-                out.data.payload.ip4.payload.udp.payload <= {<<8{regid[63:16]}};
+                out.data.payload.ip4.payload.udp.payload <= regid_hton[47:0];
                 state <= ST_SEND_UDP;
             end
             ST_SEND_UDP:
@@ -353,7 +402,4 @@ module ctrl
             out.id <= ID;
         end
     end
-
-    assign config_reg = 0;
-
 endmodule

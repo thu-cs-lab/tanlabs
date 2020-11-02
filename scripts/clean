@@ -1,0 +1,8 @@
+#!/bin/bash
+
+BASE_VLAN=256
+IFACE_PREFIX=tanlabs-vlan
+
+for ((i=${BASE_VLAN}; i <= ${BASE_VLAN} + 4; i++)) do
+    ip link del ${IFACE_PREFIX}${i}
+done

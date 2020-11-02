@@ -128,4 +128,8 @@ localparam MY_MAC = 48'h303032445754;  // TWD200
 localparam MY_IP = 32'h6408080a;  // 10.8.8.100
 localparam MY_PORT = 16'h60ea;  // 60000
 
+localparam REGID_INVALID = 0;
+localparam REGID_TICKS = 1;
+localparam REGID_SCRATCH = 2;
+
 `endif

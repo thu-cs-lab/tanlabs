@@ -1,0 +1,16 @@
+#!/bin/bash
+
+IFACE=enp3s0f3
+BASE_VLAN=256
+CTRL_VLAN=$((${BASE_VLAN} + 4))
+IFACE_PREFIX=tanlabs-vlan
+CLIENT_IP=10.8.8.2
+SERVER_IP=10.8.8.100
+
+for ((i=${BASE_VLAN}; i <= ${BASE_VLAN} + 4; i++)) do
+    ip link add link ${IFACE} name ${IFACE_PREFIX}${i} type vlan id ${i}
+    ip link set ${IFACE_PREFIX}${i} up
+done
+
+ip addr add ${CLIENT_IP}/24 dev ${IFACE_PREFIX}${CTRL_VLAN}
+arping -c 1 -I ${IFACE_PREFIX}${CTRL_VLAN} ${SERVER_IP}

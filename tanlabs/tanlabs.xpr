@@ -3,7 +3,7 @@
 <!--                                                         -->
 <!-- Copyright 1986-2019 Xilinx, Inc. All Rights Reserved.   -->
 
-<Project Version="7" Minor="44" Path="/home/twd2/fpga/tanlabs-public/tanlabs/tanlabs.xpr">
+<Project Version="7" Minor="44" Path="/home/twd2/fpga/tanlabs-public-test/tanlabs/tanlabs.xpr">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
     <Option Name="Id" Val="cb3d598700cb4d6d9e3d57604fd0b1f3"/>
@@ -295,23 +295,23 @@
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
-        <CompFileExtendedInfo CompFileName="axi_ethernet_0.xci" FileRelPathName="ip/ip_9/bd_5d9f_reset_inv_0.xci">
-          <Proxy FileSetName="bd_5d9f_reset_inv_0"/>
-        </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="axi_ethernet_0.xci" FileRelPathName="ip/ip_8/bd_5d9f_util_vector_logic_0_0.xci">
-          <Proxy FileSetName="bd_5d9f_util_vector_logic_0_0"/>
-        </CompFileExtendedInfo>
         <CompFileExtendedInfo CompFileName="axi_ethernet_0.xci" FileRelPathName="ip/ip_6/bd_5d9f_c_counter_binary_0_0.xci">
           <Proxy FileSetName="bd_5d9f_c_counter_binary_0_0"/>
         </CompFileExtendedInfo>
         <CompFileExtendedInfo CompFileName="axi_ethernet_0.xci" FileRelPathName="ip/ip_5/bd_5d9f_c_shift_ram_0_0.xci">
           <Proxy FileSetName="bd_5d9f_c_shift_ram_0_0"/>
         </CompFileExtendedInfo>
-        <CompFileExtendedInfo CompFileName="axi_ethernet_0.xci" FileRelPathName="ip/ip_1/bd_5d9f_pcs_pma_0.xci">
-          <Proxy FileSetName="bd_5d9f_pcs_pma_0"/>
+        <CompFileExtendedInfo CompFileName="axi_ethernet_0.xci" FileRelPathName="ip/ip_9/bd_5d9f_reset_inv_0.xci">
+          <Proxy FileSetName="bd_5d9f_reset_inv_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="axi_ethernet_0.xci" FileRelPathName="ip/ip_8/bd_5d9f_util_vector_logic_0_0.xci">
+          <Proxy FileSetName="bd_5d9f_util_vector_logic_0_0"/>
         </CompFileExtendedInfo>
         <CompFileExtendedInfo CompFileName="axi_ethernet_0.xci" FileRelPathName="ip/ip_0/bd_5d9f_mac_0.xci">
           <Proxy FileSetName="bd_5d9f_mac_0"/>
+        </CompFileExtendedInfo>
+        <CompFileExtendedInfo CompFileName="axi_ethernet_0.xci" FileRelPathName="ip/ip_1/bd_5d9f_pcs_pma_0.xci">
+          <Proxy FileSetName="bd_5d9f_pcs_pma_0"/>
         </CompFileExtendedInfo>
       </File>
       <Config>
@@ -448,19 +448,6 @@
         <Option Name="UseBlackboxStub" Val="1"/>
       </Config>
     </FileSet>
-    <FileSet Name="axis_arbiter_egress" Type="BlockSrcs" RelSrcDir="$PSRCDIR/axis_arbiter_egress">
-      <File Path="$PSRCDIR/sources_1/ip/axis_arbiter_egress/axis_arbiter_egress.xci">
-        <FileInfo>
-          <Attr Name="UsedIn" Val="synthesis"/>
-          <Attr Name="UsedIn" Val="implementation"/>
-          <Attr Name="UsedIn" Val="simulation"/>
-        </FileInfo>
-      </File>
-      <Config>
-        <Option Name="TopModule" Val="axis_arbiter_egress"/>
-        <Option Name="UseBlackboxStub" Val="1"/>
-      </Config>
-    </FileSet>
     <FileSet Name="axis_dwidth_converter_egress" Type="BlockSrcs" RelSrcDir="$PSRCDIR/axis_dwidth_converter_egress">
       <File Path="$PSRCDIR/sources_1/ip/axis_dwidth_converter_egress/axis_dwidth_converter_egress.xci">
         <FileInfo>
@@ -500,19 +487,6 @@
         <Option Name="UseBlackboxStub" Val="1"/>
       </Config>
     </FileSet>
-    <FileSet Name="axis_dispatcher_ctrl_ingress" Type="BlockSrcs" RelSrcDir="$PSRCDIR/axis_dispatcher_ctrl_ingress">
-      <File Path="$PSRCDIR/sources_1/ip/axis_dispatcher_ctrl_ingress/axis_dispatcher_ctrl_ingress.xci">
-        <FileInfo>
-          <Attr Name="UsedIn" Val="synthesis"/>
-          <Attr Name="UsedIn" Val="implementation"/>
-          <Attr Name="UsedIn" Val="simulation"/>
-        </FileInfo>
-      </File>
-      <Config>
-        <Option Name="TopModule" Val="axis_dispatcher_ctrl_ingress"/>
-        <Option Name="UseBlackboxStub" Val="1"/>
-      </Config>
-    </FileSet>
     <FileSet Name="axis_arbiter_rr" Type="BlockSrcs" RelSrcDir="$PSRCDIR/axis_arbiter_rr">
       <File Path="$PSRCDIR/sources_1/ip/axis_arbiter_rr/axis_arbiter_rr.xci">
         <FileInfo>
@@ -536,6 +510,32 @@
       </File>
       <Config>
         <Option Name="TopModule" Val="axis_data_fifo_egress"/>
+        <Option Name="UseBlackboxStub" Val="1"/>
+      </Config>
+    </FileSet>
+    <FileSet Name="axis_dispatcher_ctrl_ingress" Type="BlockSrcs" RelSrcDir="$PSRCDIR/axis_dispatcher_ctrl_ingress">
+      <File Path="$PSRCDIR/sources_1/ip/axis_dispatcher_ctrl_ingress/axis_dispatcher_ctrl_ingress.xci">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <Config>
+        <Option Name="TopModule" Val="axis_dispatcher_ctrl_ingress"/>
+        <Option Name="UseBlackboxStub" Val="1"/>
+      </Config>
+    </FileSet>
+    <FileSet Name="axis_arbiter_egress" Type="BlockSrcs" RelSrcDir="$PSRCDIR/axis_arbiter_egress">
+      <File Path="$PSRCDIR/sources_1/ip/axis_arbiter_egress/axis_arbiter_egress.xci">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
+      <Config>
+        <Option Name="TopModule" Val="axis_arbiter_egress"/>
         <Option Name="UseBlackboxStub" Val="1"/>
       </Config>
     </FileSet>
@@ -755,16 +755,6 @@
       <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
       <RQSFiles/>
     </Run>
-    <Run Id="axis_arbiter_egress_synth_1" Type="Ft3:Synth" SrcSet="axis_arbiter_egress" Part="xc7k160tffg676-2" ConstrsSet="axis_arbiter_egress" Description="Vivado Synthesis Defaults" AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" Dir="$PRUNDIR/axis_arbiter_egress_synth_1" IncludeInArchive="true">
-      <Strategy Version="1" Minor="2">
-        <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2019"/>
-        <Step Id="synth_design"/>
-      </Strategy>
-      <GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>
-      <ReportStrategy Name="Vivado Synthesis Default Reports" Flow="Vivado Synthesis 2019"/>
-      <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
-      <RQSFiles/>
-    </Run>
     <Run Id="axis_dwidth_converter_egress_synth_1" Type="Ft3:Synth" SrcSet="axis_dwidth_converter_egress" Part="xc7k160tffg676-2" ConstrsSet="axis_dwidth_converter_egress" Description="Vivado Synthesis Defaults" AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" Dir="$PRUNDIR/axis_dwidth_converter_egress_synth_1" IncludeInArchive="true">
       <Strategy Version="1" Minor="2">
         <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2019"/>
@@ -795,16 +785,6 @@
       <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
       <RQSFiles/>
     </Run>
-    <Run Id="axis_dispatcher_ctrl_ingress_synth_1" Type="Ft3:Synth" SrcSet="axis_dispatcher_ctrl_ingress" Part="xc7k160tffg676-2" ConstrsSet="axis_dispatcher_ctrl_ingress" Description="Vivado Synthesis Defaults" AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" Dir="$PRUNDIR/axis_dispatcher_ctrl_ingress_synth_1" IncludeInArchive="true">
-      <Strategy Version="1" Minor="2">
-        <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2019"/>
-        <Step Id="synth_design"/>
-      </Strategy>
-      <GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>
-      <ReportStrategy Name="Vivado Synthesis Default Reports" Flow="Vivado Synthesis 2019"/>
-      <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
-      <RQSFiles/>
-    </Run>
     <Run Id="axis_arbiter_rr_synth_1" Type="Ft3:Synth" SrcSet="axis_arbiter_rr" Part="xc7k160tffg676-2" ConstrsSet="axis_arbiter_rr" Description="Vivado Synthesis Defaults" AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" Dir="$PRUNDIR/axis_arbiter_rr_synth_1" IncludeInArchive="true">
       <Strategy Version="1" Minor="2">
         <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2019"/>
@@ -818,6 +798,30 @@
     <Run Id="axis_data_fifo_egress_synth_1" Type="Ft3:Synth" SrcSet="axis_data_fifo_egress" Part="xc7k160tffg676-2" ConstrsSet="axis_data_fifo_egress" Description="Vivado Synthesis Defaults" AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" Dir="$PRUNDIR/axis_data_fifo_egress_synth_1" IncludeInArchive="true">
       <Strategy Version="1" Minor="2">
         <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2019"/>
+        <Step Id="synth_design"/>
+      </Strategy>
+      <GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>
+      <ReportStrategy Name="Vivado Synthesis Default Reports" Flow="Vivado Synthesis 2019"/>
+      <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
+      <RQSFiles/>
+    </Run>
+    <Run Id="axis_dispatcher_ctrl_ingress_synth_1" Type="Ft3:Synth" SrcSet="axis_dispatcher_ctrl_ingress" Part="xc7k160tffg676-2" ConstrsSet="axis_dispatcher_ctrl_ingress" Description="Vivado Synthesis Defaults" AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" Dir="$PRUNDIR/axis_dispatcher_ctrl_ingress_synth_1" IncludeInArchive="true">
+      <Strategy Version="1" Minor="2">
+        <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2019">
+          <Desc>Vivado Synthesis Defaults</Desc>
+        </StratHandle>
+        <Step Id="synth_design"/>
+      </Strategy>
+      <GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>
+      <ReportStrategy Name="Vivado Synthesis Default Reports" Flow="Vivado Synthesis 2019"/>
+      <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
+      <RQSFiles/>
+    </Run>
+    <Run Id="axis_arbiter_egress_synth_1" Type="Ft3:Synth" SrcSet="axis_arbiter_egress" Part="xc7k160tffg676-2" ConstrsSet="axis_arbiter_egress" Description="Vivado Synthesis Defaults" AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" Dir="$PRUNDIR/axis_arbiter_egress_synth_1" IncludeInArchive="true">
+      <Strategy Version="1" Minor="2">
+        <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2019">
+          <Desc>Vivado Synthesis Defaults</Desc>
+        </StratHandle>
         <Step Id="synth_design"/>
       </Strategy>
       <GeneratedRun Dir="$PRUNDIR" File="gen_run.xml"/>
@@ -1149,23 +1153,6 @@
       <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
       <RQSFiles/>
     </Run>
-    <Run Id="axis_arbiter_egress_impl_1" Type="Ft2:EntireDesign" Part="xc7k160tffg676-2" ConstrsSet="axis_arbiter_egress" Description="Default settings for Implementation." AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" SynthRun="axis_arbiter_egress_synth_1" IncludeInArchive="false" GenFullBitstream="true">
-      <Strategy Version="1" Minor="2">
-        <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2019"/>
-        <Step Id="init_design"/>
-        <Step Id="opt_design"/>
-        <Step Id="power_opt_design"/>
-        <Step Id="place_design"/>
-        <Step Id="post_place_power_opt_design"/>
-        <Step Id="phys_opt_design" EnableStepBool="1"/>
-        <Step Id="route_design"/>
-        <Step Id="post_route_phys_opt_design"/>
-        <Step Id="write_bitstream"/>
-      </Strategy>
-      <ReportStrategy Name="Vivado Implementation Default Reports" Flow="Vivado Implementation 2019"/>
-      <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
-      <RQSFiles/>
-    </Run>
     <Run Id="axis_dwidth_converter_egress_impl_1" Type="Ft2:EntireDesign" Part="xc7k160tffg676-2" ConstrsSet="axis_dwidth_converter_egress" Description="Default settings for Implementation." AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" SynthRun="axis_dwidth_converter_egress_synth_1" IncludeInArchive="false" GenFullBitstream="true">
       <Strategy Version="1" Minor="2">
         <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2019"/>
@@ -1217,23 +1204,6 @@
       <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
       <RQSFiles/>
     </Run>
-    <Run Id="axis_dispatcher_ctrl_ingress_impl_1" Type="Ft2:EntireDesign" Part="xc7k160tffg676-2" ConstrsSet="axis_dispatcher_ctrl_ingress" Description="Default settings for Implementation." AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" SynthRun="axis_dispatcher_ctrl_ingress_synth_1" IncludeInArchive="false" GenFullBitstream="true">
-      <Strategy Version="1" Minor="2">
-        <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2019"/>
-        <Step Id="init_design"/>
-        <Step Id="opt_design"/>
-        <Step Id="power_opt_design"/>
-        <Step Id="place_design"/>
-        <Step Id="post_place_power_opt_design"/>
-        <Step Id="phys_opt_design" EnableStepBool="1"/>
-        <Step Id="route_design"/>
-        <Step Id="post_route_phys_opt_design"/>
-        <Step Id="write_bitstream"/>
-      </Strategy>
-      <ReportStrategy Name="Vivado Implementation Default Reports" Flow="Vivado Implementation 2019"/>
-      <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
-      <RQSFiles/>
-    </Run>
     <Run Id="axis_arbiter_rr_impl_1" Type="Ft2:EntireDesign" Part="xc7k160tffg676-2" ConstrsSet="axis_arbiter_rr" Description="Default settings for Implementation." AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" SynthRun="axis_arbiter_rr_synth_1" IncludeInArchive="false" GenFullBitstream="true">
       <Strategy Version="1" Minor="2">
         <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2019"/>
@@ -1254,6 +1224,44 @@
     <Run Id="axis_data_fifo_egress_impl_1" Type="Ft2:EntireDesign" Part="xc7k160tffg676-2" ConstrsSet="axis_data_fifo_egress" Description="Default settings for Implementation." AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" SynthRun="axis_data_fifo_egress_synth_1" IncludeInArchive="false" GenFullBitstream="true">
       <Strategy Version="1" Minor="2">
         <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2019"/>
+        <Step Id="init_design"/>
+        <Step Id="opt_design"/>
+        <Step Id="power_opt_design"/>
+        <Step Id="place_design"/>
+        <Step Id="post_place_power_opt_design"/>
+        <Step Id="phys_opt_design" EnableStepBool="1"/>
+        <Step Id="route_design"/>
+        <Step Id="post_route_phys_opt_design"/>
+        <Step Id="write_bitstream"/>
+      </Strategy>
+      <ReportStrategy Name="Vivado Implementation Default Reports" Flow="Vivado Implementation 2019"/>
+      <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
+      <RQSFiles/>
+    </Run>
+    <Run Id="axis_dispatcher_ctrl_ingress_impl_1" Type="Ft2:EntireDesign" Part="xc7k160tffg676-2" ConstrsSet="axis_dispatcher_ctrl_ingress" Description="Default settings for Implementation." AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" SynthRun="axis_dispatcher_ctrl_ingress_synth_1" IncludeInArchive="false" GenFullBitstream="true">
+      <Strategy Version="1" Minor="2">
+        <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2019">
+          <Desc>Default settings for Implementation.</Desc>
+        </StratHandle>
+        <Step Id="init_design"/>
+        <Step Id="opt_design"/>
+        <Step Id="power_opt_design"/>
+        <Step Id="place_design"/>
+        <Step Id="post_place_power_opt_design"/>
+        <Step Id="phys_opt_design" EnableStepBool="1"/>
+        <Step Id="route_design"/>
+        <Step Id="post_route_phys_opt_design"/>
+        <Step Id="write_bitstream"/>
+      </Strategy>
+      <ReportStrategy Name="Vivado Implementation Default Reports" Flow="Vivado Implementation 2019"/>
+      <Report Name="ROUTE_DESIGN.REPORT_METHODOLOGY" Enabled="1"/>
+      <RQSFiles/>
+    </Run>
+    <Run Id="axis_arbiter_egress_impl_1" Type="Ft2:EntireDesign" Part="xc7k160tffg676-2" ConstrsSet="axis_arbiter_egress" Description="Default settings for Implementation." AutoIncrementalCheckpoint="false" WriteIncrSynthDcp="false" SynthRun="axis_arbiter_egress_synth_1" IncludeInArchive="false" GenFullBitstream="true">
+      <Strategy Version="1" Minor="2">
+        <StratHandle Name="Vivado Implementation Defaults" Flow="Vivado Implementation 2019">
+          <Desc>Default settings for Implementation.</Desc>
+        </StratHandle>
         <Step Id="init_design"/>
         <Step Id="opt_design"/>
         <Step Id="power_opt_design"/>
