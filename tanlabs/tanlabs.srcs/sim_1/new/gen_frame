@@ -50,6 +50,8 @@ for i in range(10):
   write_frame(0, Ether(src=MAC_TESTER, dst=MAC_BROADCAST) /
               ARP(op='who-has', hwsrc=MAC_TESTER, psrc=IP_TESTER, hwdst=MAC_BROADCAST, pdst=IP_DUT))
 
+write_frame(0, Ether(b'A' * 64))
+
 # UDP test (checksum wrong)
 write_frame(0, Ether(src=MAC_TESTER, dst=MAC_DUT) /
             IP(src=IP_TESTER, dst=IP_DUT) /

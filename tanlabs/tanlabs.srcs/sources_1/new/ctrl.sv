@@ -149,6 +149,9 @@ module ctrl
             begin
                 if (fifo.valid)
                 begin
+                    // TODO:
+                    // if (|(fifo.user & fifo.keep))
+                    // drop <= 1'b1;
                     if (counter == 0)
                     begin
                         if (fifo.data.dst[0] == 1'b1 || fifo.data.dst == MY_MAC)
@@ -233,6 +236,7 @@ module ctrl
             begin
                 if (drop)
                 begin
+                    drop <= 1'b0;
                     state <= ST_RECV;
                 end
                 else if (is_arp)
