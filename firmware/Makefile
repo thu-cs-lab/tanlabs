@@ -30,7 +30,7 @@ viasm: $(TARGET)
 	$(OBJDUMP) -xd $< | vi -
 
 %.asm: %.elf
-	$(OBJDUMP) -xd $@
+	$(OBJDUMP) -xd $< > $@
 
 %.bin: %.elf
 	$(OBJCOPY) -S --adjust-vma -0x80000000 -O binary $< $@
