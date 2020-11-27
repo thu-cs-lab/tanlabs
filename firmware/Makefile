@@ -29,6 +29,10 @@ all: $(OBJECTS) $(TARGET) kernel.bin
 viasm: $(TARGET)
 	$(OBJDUMP) -xd $< | vi -
 
+.PHONY: inst
+inst: $(TARGET)
+	$(OBJDUMP) -Mno-aliases -d $< | ./inst.py
+
 %.asm: %.elf
 	$(OBJDUMP) -xd $< > $@
 
