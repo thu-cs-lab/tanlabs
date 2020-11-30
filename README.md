@@ -5,7 +5,7 @@ Tsinghua Advanced Networking Labs
 目录说明：
 
 * `tanlabs`：硬件路由器实验框架
-* `firmware`：运行在CPU上的软件的框架
+* `firmware`：运行在CPU上的软件的框架（固件框架）
 * `ibert_7series_gtp_1.25G_ex`：1.25Gbps的IBERT测试工具
 * `ibert_7series_gtp_6.25G_ex`：6.25Gbps的IBERT测试工具
 * `figures`：仅供参考的图片
@@ -14,7 +14,7 @@ Tsinghua Advanced Networking Labs
 
 ![regenerate](figures/regenerate.png)
 
-此外，开始实验前，请实验者先阅读`tanlabs/tanlabs.srcs/sources_1/new/`以及`tanlabs/tanlabs.srcs/sim_1/new/`中所有文件。以下为每个文件的大致说明。
+此外，开始实验前，请实验者先阅读`tanlabs/tanlabs.srcs/sources_1/new/`、`tanlabs/tanlabs.srcs/sim_1/new/`以及`firmware`中所有文件。以下为每个文件的大致说明。
 
 `tanlabs/tanlabs.srcs/sources_1/new/`文件说明：
 
@@ -43,4 +43,6 @@ Tsinghua Advanced Networking Labs
 * **此外，实验者还需要为ARP缓存、转发表、CPU等模块建立新的仿真测试文件。**
 
 请注意，上述PCAP文件中使用VLAN ID标识入接口以及出接口，实际传输的以太网帧不含有VLAN信息。
+
+关于`firmware`，请阅读`firmware/README.md`。
 
