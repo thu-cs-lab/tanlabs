@@ -48,7 +48,12 @@ inst: $(TARGET)
 $(TARGET): $(OBJECTS) linker.ld
 	$(GCC) -Tlinker.ld $(CFLAGS) $(LDFLAGS) $(OBJECTS) -lgcc -o $@
 
+.PHONY: sim
 sim: $(TARGET)
+	$(QEMU) -machine virt -nographic -m 8M -kernel $(TARGET) -s -bios none
+
+.PHONY: debug
+debug: $(TARGET)
 	$(QEMU) -machine virt -nographic -m 8M -kernel $(TARGET) -S -s -bios none
 
 .PHONY: clean
