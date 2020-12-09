@@ -44,5 +44,9 @@ Tsinghua Advanced Networking Labs
 
 请注意，上述PCAP文件中使用VLAN ID标识入接口以及出接口，实际传输的以太网帧不含有VLAN信息。
 
+```
+set_property CONFIG.SIMULATION_MODE {1} [get_ips axi_ethernet_0 axi_ethernet_noshared]
+```
+
 关于`firmware`，请阅读`firmware/README.md`。
 
