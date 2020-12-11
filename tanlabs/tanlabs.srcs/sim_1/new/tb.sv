@@ -52,8 +52,8 @@ module tb
 
     wire [3:0] sfp_tb2dut_p;
     wire [3:0] sfp_tb2dut_n;
-    wire [3:0] sfp_dut2tb_p = sfp_tb2dut_p;
-    wire [3:0] sfp_dut2tb_n = sfp_tb2dut_n;
+    wire [3:0] sfp_dut2tb_p;
+    wire [3:0] sfp_dut2tb_n;
 
     sim_axis2sfp sim_axis2sfp_i(
         .reset(reset),
@@ -92,5 +92,25 @@ module tb
         .s_dest(out_dest),
         .s_valid(out_valid),
         .s_ready(out_ready)
+    );
+
+    tanlabs dut(
+        .RST(reset),
+
+        .gtrefclk_p(clk_125M),
+        .gtrefclk_n(~clk_125M),
+
+        .led(),
+
+        .sfp_rx_los(4'd0),
+        .sfp_rx_p(sfp_tb2dut_p),
+        .sfp_rx_n(sfp_tb2dut_n),
+        .sfp_tx_disable(),
+        .sfp_tx_p(sfp_dut2tb_p),
+        .sfp_tx_n(sfp_dut2tb_n),
+        .sfp_led(),
+
+        .sfp_sda(1'b0),
+        .sfp_scl(1'b0)
     );
 endmodule
