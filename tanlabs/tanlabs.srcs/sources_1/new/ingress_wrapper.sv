@@ -49,8 +49,9 @@ module ingress_wrapper
 
     // TODO: check dst MAC and dst IP.
     wire to_data_plane =
-        in.data.ethertype == ETHERTYPE_IP4
-        && in.data.payload.ip4.proto == PROTO_UDP
+        in.data.dst == interface_config.mac
+        && in.data.ethertype == ETHERTYPE_IP4
+        && in.data.payload.ip4.proto == PROTO_TEST
         && in.data.payload.ip4.payload.udp.payload == UDP_PAYLOAD_MAGIC; 
 
     wire new_dest = to_data_plane;
@@ -130,9 +131,9 @@ module ingress_wrapper
 //    state_t state;
     assign dp_ready = 1'b1;
 
-    function [63:0] keep2len;
-        input [DATA_WIDTH - 1:0] keep;
-        reg [63:0] i; 
+    function [15:0] keep2len;
+        input [DATA_WIDTH / 8 - 1:0] keep;
+        reg [15:0] i; 
     begin
         keep2len = 0;
         for (i = 0; i < DATA_WIDTH / 8; i = i + 1)

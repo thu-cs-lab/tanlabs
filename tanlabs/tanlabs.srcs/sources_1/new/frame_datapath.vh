@@ -11,7 +11,6 @@ typedef struct packed
 {
     logic [63:0] nbytes;
     logic [63:0] npackets;
-    logic [63:0] nerror;
 } interface_send_state_t;
 
 typedef struct packed
@@ -23,7 +22,14 @@ typedef struct packed
 
 typedef struct packed
 {
+    logic enable;
     logic reset_counters;
+    logic [47:0] mac;
+    logic [47:0] mac_dst;
+    logic [31:0] ip_src;
+    logic [31:0] ip_dst;
+    logic [15:0] packet_len;
+    logic [63:0] gap_len;
 } interface_config_t;
 
 typedef struct packed
@@ -122,6 +128,7 @@ localparam ARP_OPER_REQUEST = 16'h0100;
 localparam ARP_OPER_REPLY = 16'h0200;
 
 localparam PROTO_UDP = 8'd17;
+localparam PROTO_TEST = 8'hfe;  // RFC 3692
 localparam UDP_PAYLOAD_MAGIC = 48'h323232445754;  // TWD222
 
 localparam MY_MAC = 48'h303032445754;  // TWD200
@@ -131,5 +138,6 @@ localparam MY_PORT = 16'h60ea;  // 60000
 localparam REGID_INVALID = 0;
 localparam REGID_TICKS = 1;
 localparam REGID_SCRATCH = 2;
+localparam REGID_SAMPLE = 3;
 
 `endif
