@@ -381,7 +381,7 @@ module tanlabs
                     .s_axis_tuser(sim_tx_user[i]),
 
                     .m_axis_tvalid(eth_rx8_valid[i]),
-                    .m_axis_tready(1'b1),
+                    .m_axis_tready(debug_ingress_interconnect_ready[i]),  // FIXME
                     .m_axis_tdata(eth_rx8_data[i]),
                     .m_axis_tkeep(),
                     .m_axis_tlast(eth_rx8_last[i]),
