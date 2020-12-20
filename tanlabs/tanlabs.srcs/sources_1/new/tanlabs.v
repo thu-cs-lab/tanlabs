@@ -2,7 +2,11 @@
 
 /* Tsinghua Advanced Networking Labs */
 
-module tanlabs(
+module tanlabs
+#(
+    parameter SIM = 0
+)
+(
     input RST,
 
     input gtrefclk_p,
@@ -28,6 +32,9 @@ module tanlabs(
     input sfp_sda,
     input sfp_scl
 );
+
+    localparam DATA_WIDTH = 64;
+    localparam ID_WIDTH = 3;
 
     wire [4:0] debug_ingress_interconnect_ready;
     wire debug_datapath_fifo_ready;
@@ -88,92 +95,14 @@ module tanlabs(
     wire eth_rx8_user [0:4];
     wire eth_rx8_valid [0:4];
 
-    // Instantiate 4 PHY/MAC IP cores.
-
-    assign sfp_tx_disable[0] = 1'b0;
-    axi_ethernet_0 axi_ethernet_0_i(
-        .mac_irq(),
-        .tx_mac_aclk(),
-        .rx_mac_aclk(),
-        .tx_reset(),
-        .rx_reset(),
-
-        .glbl_rst(reset_not_sync),
-
-        .mmcm_locked_out(mmcm_locked_out),
-        .rxuserclk_out(rxuserclk_out),
-        .rxuserclk2_out(rxuserclk2_out),
-        .userclk_out(userclk_out),
-        .userclk2_out(userclk2_out),
-        .pma_reset_out(pma_reset_out),
-        .gt0_pll0outclk_out(gt0_pll0outclk_out),
-        .gt0_pll0outrefclk_out(gt0_pll0outrefclk_out),
-        .gt0_pll1outclk_out(gt0_pll1outclk_out),
-        .gt0_pll1outrefclk_out(gt0_pll1outrefclk_out),
-        .gt0_pll0lock_out(gt0_pll0lock_out),
-        .gt0_pll0refclklost_out(gt0_pll0refclklost_out),
-        .gtref_clk_out(gtref_clk_out),
-        .gtref_clk_buf_out(gtref_clk_buf_out),
-
-        .ref_clk(ref_clk),
-
-        .s_axi_lite_resetn(~reset_eth),
-        .s_axi_lite_clk(eth_clk),
-        .s_axi_araddr(0),
-        .s_axi_arready(),
-        .s_axi_arvalid(0),
-        .s_axi_awaddr(0),
-        .s_axi_awready(),
-        .s_axi_awvalid(0),
-        .s_axi_bready(0),
-        .s_axi_bresp(),
-        .s_axi_bvalid(),
-        .s_axi_rdata(),
-        .s_axi_rready(0),
-        .s_axi_rresp(),
-        .s_axi_rvalid(),
-        .s_axi_wdata(0),
-        .s_axi_wready(),
-        .s_axi_wvalid(0),
-
-        .s_axis_tx_tdata(eth_tx8_data[0]),
-        .s_axis_tx_tlast(eth_tx8_last[0]),
-        .s_axis_tx_tready(eth_tx8_ready[0]),
-        .s_axis_tx_tuser(eth_tx8_user[0]),
-        .s_axis_tx_tvalid(eth_tx8_valid[0]),
-
-        .m_axis_rx_tdata(eth_rx8_data[0]),
-        .m_axis_rx_tlast(eth_rx8_last[0]),
-        .m_axis_rx_tuser(eth_rx8_user[0]),
-        .m_axis_rx_tvalid(eth_rx8_valid[0]),
-
-        .s_axis_pause_tdata(0),
-        .s_axis_pause_tvalid(0),
-
-        .rx_statistics_statistics_data(),
-        .rx_statistics_statistics_valid(),
-        .tx_statistics_statistics_data(),
-        .tx_statistics_statistics_valid(),
-
-        .tx_ifg_delay(8'h00),
-        .status_vector(),
-        .signal_detect(~sfp_rx_los[0]),
-
-        .sfp_rxn(sfp_rx_n[0]),
-        .sfp_rxp(sfp_rx_p[0]),
-        .sfp_txn(sfp_tx_n[0]),
-        .sfp_txp(sfp_tx_p[0]),
-
-        .mgt_clk_clk_n(gtrefclk_n),
-        .mgt_clk_clk_p(gtrefclk_p)
-    );
-
     genvar i;
     generate
-        for (i = 1; i < 4; i = i + 1)
+        if (!SIM)
         begin
-            assign sfp_tx_disable[i] = 1'b0;
-            axi_ethernet_noshared axi_ethernet_noshared_i(
+            // Instantiate 4 PHY/MAC IP cores.
+
+            assign sfp_tx_disable[0] = 1'b0;
+            axi_ethernet_0 axi_ethernet_0_i(
                 .mac_irq(),
                 .tx_mac_aclk(),
                 .rx_mac_aclk(),
@@ -182,24 +111,20 @@ module tanlabs(
 
                 .glbl_rst(reset_not_sync),
 
-                .mmcm_locked(mmcm_locked_out),
-                .mmcm_reset_out(),
-                .rxuserclk(rxuserclk_out),
-                .rxuserclk2(rxuserclk2_out),
-                .userclk(userclk_out),
-                .userclk2(userclk2_out),
-                .pma_reset(pma_reset_out),
-                .rxoutclk(),
-                .txoutclk(),
-                .gt0_pll0outclk_in(gt0_pll0outclk_out),
-                .gt0_pll0outrefclk_in(gt0_pll0outrefclk_out),
-                .gt0_pll1outclk_in(gt0_pll1outclk_out),
-                .gt0_pll1outrefclk_in(gt0_pll1outrefclk_out),
-                .gt0_pll0lock_in(gt0_pll0lock_out),
-                .gt0_pll0refclklost_in(gt0_pll0refclklost_out),
-                .gt0_pll0reset_out(),
-                .gtref_clk(gtref_clk_out),
-                .gtref_clk_buf(gtref_clk_buf_out),
+                .mmcm_locked_out(mmcm_locked_out),
+                .rxuserclk_out(rxuserclk_out),
+                .rxuserclk2_out(rxuserclk2_out),
+                .userclk_out(userclk_out),
+                .userclk2_out(userclk2_out),
+                .pma_reset_out(pma_reset_out),
+                .gt0_pll0outclk_out(gt0_pll0outclk_out),
+                .gt0_pll0outrefclk_out(gt0_pll0outrefclk_out),
+                .gt0_pll1outclk_out(gt0_pll1outclk_out),
+                .gt0_pll1outrefclk_out(gt0_pll1outrefclk_out),
+                .gt0_pll0lock_out(gt0_pll0lock_out),
+                .gt0_pll0refclklost_out(gt0_pll0refclklost_out),
+                .gtref_clk_out(gtref_clk_out),
+                .gtref_clk_buf_out(gtref_clk_buf_out),
 
                 .ref_clk(ref_clk),
 
@@ -222,16 +147,16 @@ module tanlabs(
                 .s_axi_wready(),
                 .s_axi_wvalid(0),
 
-                .s_axis_tx_tdata(eth_tx8_data[i]),
-                .s_axis_tx_tlast(eth_tx8_last[i]),
-                .s_axis_tx_tready(eth_tx8_ready[i]),
-                .s_axis_tx_tuser(eth_tx8_user[i]),
-                .s_axis_tx_tvalid(eth_tx8_valid[i]),
+                .s_axis_tx_tdata(eth_tx8_data[0]),
+                .s_axis_tx_tlast(eth_tx8_last[0]),
+                .s_axis_tx_tready(eth_tx8_ready[0]),
+                .s_axis_tx_tuser(eth_tx8_user[0]),
+                .s_axis_tx_tvalid(eth_tx8_valid[0]),
 
-                .m_axis_rx_tdata(eth_rx8_data[i]),
-                .m_axis_rx_tlast(eth_rx8_last[i]),
-                .m_axis_rx_tuser(eth_rx8_user[i]),
-                .m_axis_rx_tvalid(eth_rx8_valid[i]),
+                .m_axis_rx_tdata(eth_rx8_data[0]),
+                .m_axis_rx_tlast(eth_rx8_last[0]),
+                .m_axis_rx_tuser(eth_rx8_user[0]),
+                .m_axis_rx_tvalid(eth_rx8_valid[0]),
 
                 .s_axis_pause_tdata(0),
                 .s_axis_pause_tvalid(0),
@@ -243,12 +168,323 @@ module tanlabs(
 
                 .tx_ifg_delay(8'h00),
                 .status_vector(),
-                .signal_detect(~sfp_rx_los[i]),
+                .signal_detect(~sfp_rx_los[0]),
 
-                .sfp_rxn(sfp_rx_n[i]),
-                .sfp_rxp(sfp_rx_p[i]),
-                .sfp_txn(sfp_tx_n[i]),
-                .sfp_txp(sfp_tx_p[i])
+                .sfp_rxn(sfp_rx_n[0]),
+                .sfp_rxp(sfp_rx_p[0]),
+                .sfp_txn(sfp_tx_n[0]),
+                .sfp_txp(sfp_tx_p[0]),
+
+                .mgt_clk_clk_n(gtrefclk_n),
+                .mgt_clk_clk_p(gtrefclk_p)
+            );
+
+            for (i = 1; i < 4; i = i + 1)
+            begin
+                assign sfp_tx_disable[i] = 1'b0;
+                axi_ethernet_noshared axi_ethernet_noshared_i(
+                    .mac_irq(),
+                    .tx_mac_aclk(),
+                    .rx_mac_aclk(),
+                    .tx_reset(),
+                    .rx_reset(),
+
+                    .glbl_rst(reset_not_sync),
+
+                    .mmcm_locked(mmcm_locked_out),
+                    .mmcm_reset_out(),
+                    .rxuserclk(rxuserclk_out),
+                    .rxuserclk2(rxuserclk2_out),
+                    .userclk(userclk_out),
+                    .userclk2(userclk2_out),
+                    .pma_reset(pma_reset_out),
+                    .rxoutclk(),
+                    .txoutclk(),
+                    .gt0_pll0outclk_in(gt0_pll0outclk_out),
+                    .gt0_pll0outrefclk_in(gt0_pll0outrefclk_out),
+                    .gt0_pll1outclk_in(gt0_pll1outclk_out),
+                    .gt0_pll1outrefclk_in(gt0_pll1outrefclk_out),
+                    .gt0_pll0lock_in(gt0_pll0lock_out),
+                    .gt0_pll0refclklost_in(gt0_pll0refclklost_out),
+                    .gt0_pll0reset_out(),
+                    .gtref_clk(gtref_clk_out),
+                    .gtref_clk_buf(gtref_clk_buf_out),
+
+                    .ref_clk(ref_clk),
+
+                    .s_axi_lite_resetn(~reset_eth),
+                    .s_axi_lite_clk(eth_clk),
+                    .s_axi_araddr(0),
+                    .s_axi_arready(),
+                    .s_axi_arvalid(0),
+                    .s_axi_awaddr(0),
+                    .s_axi_awready(),
+                    .s_axi_awvalid(0),
+                    .s_axi_bready(0),
+                    .s_axi_bresp(),
+                    .s_axi_bvalid(),
+                    .s_axi_rdata(),
+                    .s_axi_rready(0),
+                    .s_axi_rresp(),
+                    .s_axi_rvalid(),
+                    .s_axi_wdata(0),
+                    .s_axi_wready(),
+                    .s_axi_wvalid(0),
+
+                    .s_axis_tx_tdata(eth_tx8_data[i]),
+                    .s_axis_tx_tlast(eth_tx8_last[i]),
+                    .s_axis_tx_tready(eth_tx8_ready[i]),
+                    .s_axis_tx_tuser(eth_tx8_user[i]),
+                    .s_axis_tx_tvalid(eth_tx8_valid[i]),
+
+                    .m_axis_rx_tdata(eth_rx8_data[i]),
+                    .m_axis_rx_tlast(eth_rx8_last[i]),
+                    .m_axis_rx_tuser(eth_rx8_user[i]),
+                    .m_axis_rx_tvalid(eth_rx8_valid[i]),
+
+                    .s_axis_pause_tdata(0),
+                    .s_axis_pause_tvalid(0),
+
+                    .rx_statistics_statistics_data(),
+                    .rx_statistics_statistics_valid(),
+                    .tx_statistics_statistics_data(),
+                    .tx_statistics_statistics_valid(),
+
+                    .tx_ifg_delay(8'h00),
+                    .status_vector(),
+                    .signal_detect(~sfp_rx_los[i]),
+
+                    .sfp_rxn(sfp_rx_n[i]),
+                    .sfp_rxp(sfp_rx_p[i]),
+                    .sfp_txn(sfp_tx_n[i]),
+                    .sfp_txp(sfp_tx_p[i])
+                );
+            end
+        end
+        else
+        begin
+            // For simulation.
+            assign gtref_clk_buf_out = gtrefclk_p;
+            assign userclk2_out = gtrefclk_p;
+            assign mmcm_locked_out = 1'b1;
+
+            assign sfp_tx_disable = 0;
+            assign sfp_tx_p = 0;
+            assign sfp_tx_n = 0;
+
+            wire [DATA_WIDTH - 1:0] in_data;
+            wire [DATA_WIDTH / 8 - 1:0] in_keep;
+            wire in_last;
+            wire [DATA_WIDTH / 8 - 1:0] in_user;
+            wire [ID_WIDTH - 1:0] in_id;
+            wire in_valid;
+            wire in_ready;
+
+            axis_model axis_model_i(
+                .clk(eth_clk),
+                .reset(reset_eth),
+
+                .m_data(in_data),
+                .m_keep(in_keep),
+                .m_last(in_last),
+                .m_user(in_user),
+                .m_id(in_id),
+                .m_valid(in_valid),
+                .m_ready(in_ready)
+            );
+
+            wire [DATA_WIDTH - 1:0] sim_tx_data [0:3];
+            wire [DATA_WIDTH / 8 - 1:0] sim_tx_keep [0:3];
+            wire sim_tx_last [0:3];
+            wire sim_tx_ready [0:3];
+            wire [DATA_WIDTH / 8 - 1:0] sim_tx_user [0:3];
+            wire sim_tx_valid [0:3];
+
+            axis_interconnect_egress axis_interconnect_sim_in_i(
+                .ACLK(eth_clk),
+                .ARESETN(~reset_eth),
+
+                .S00_AXIS_ACLK(eth_clk),
+                .S00_AXIS_ARESETN(~reset_eth),
+                .S00_AXIS_TVALID(in_valid),
+                .S00_AXIS_TREADY(in_ready),
+                .S00_AXIS_TDATA(in_data),
+                .S00_AXIS_TKEEP(in_keep),
+                .S00_AXIS_TLAST(in_last),
+                .S00_AXIS_TDEST(in_id),
+                .S00_AXIS_TUSER(in_user),
+
+                .M00_AXIS_ACLK(eth_clk),
+                .M00_AXIS_ARESETN(~reset_eth),
+                .M00_AXIS_TVALID(sim_tx_valid[0]),
+                .M00_AXIS_TREADY(sim_tx_ready[0]),
+                .M00_AXIS_TDATA(sim_tx_data[0]),
+                .M00_AXIS_TKEEP(sim_tx_keep[0]),
+                .M00_AXIS_TLAST(sim_tx_last[0]),
+                .M00_AXIS_TDEST(),
+                .M00_AXIS_TUSER(sim_tx_user[0]),
+
+                .M01_AXIS_ACLK(eth_clk),
+                .M01_AXIS_ARESETN(~reset_eth),
+                .M01_AXIS_TVALID(sim_tx_valid[1]),
+                .M01_AXIS_TREADY(sim_tx_ready[1]),
+                .M01_AXIS_TDATA(sim_tx_data[1]),
+                .M01_AXIS_TKEEP(sim_tx_keep[1]),
+                .M01_AXIS_TLAST(sim_tx_last[1]),
+                .M01_AXIS_TDEST(),
+                .M01_AXIS_TUSER(sim_tx_user[1]),
+
+                .M02_AXIS_ACLK(eth_clk),
+                .M02_AXIS_ARESETN(~reset_eth),
+                .M02_AXIS_TVALID(sim_tx_valid[2]),
+                .M02_AXIS_TREADY(sim_tx_ready[2]),
+                .M02_AXIS_TDATA(sim_tx_data[2]),
+                .M02_AXIS_TKEEP(sim_tx_keep[2]),
+                .M02_AXIS_TLAST(sim_tx_last[2]),
+                .M02_AXIS_TDEST(),
+                .M02_AXIS_TUSER(sim_tx_user[2]),
+
+                .M03_AXIS_ACLK(eth_clk),
+                .M03_AXIS_ARESETN(~reset_eth),
+                .M03_AXIS_TVALID(sim_tx_valid[3]),
+                .M03_AXIS_TREADY(sim_tx_ready[3]),
+                .M03_AXIS_TDATA(sim_tx_data[3]),
+                .M03_AXIS_TKEEP(sim_tx_keep[3]),
+                .M03_AXIS_TLAST(sim_tx_last[3]),
+                .M03_AXIS_TDEST(),
+                .M03_AXIS_TUSER(sim_tx_user[3]),
+
+                .M04_AXIS_ACLK(eth_clk),
+                .M04_AXIS_ARESETN(~reset_eth),
+                .M04_AXIS_TVALID(),
+                .M04_AXIS_TREADY(1'b1),
+                .M04_AXIS_TDATA(),
+                .M04_AXIS_TKEEP(),
+                .M04_AXIS_TLAST(),
+                .M04_AXIS_TDEST(),
+                .M04_AXIS_TUSER(),
+
+                .S00_DECODE_ERR()
+            );
+
+            for (i = 0; i < 4; i = i + 1)
+            begin
+                axis_dwidth_converter_64_8 axis_dwidth_converter_64_8_i(
+                    .aclk(eth_clk),
+                    .aresetn(~reset),
+
+                    .s_axis_tvalid(sim_tx_valid[i]),
+                    .s_axis_tready(sim_tx_ready[i]),
+                    .s_axis_tdata(sim_tx_data[i]),
+                    .s_axis_tkeep(sim_tx_keep[i]),
+                    .s_axis_tlast(sim_tx_last[i]),
+                    .s_axis_tuser(sim_tx_user[i]),
+
+                    .m_axis_tvalid(eth_rx8_valid[i]),
+                    .m_axis_tready(1'b1),
+                    .m_axis_tdata(eth_rx8_data[i]),
+                    .m_axis_tkeep(),
+                    .m_axis_tlast(eth_rx8_last[i]),
+                    .m_axis_tuser(eth_rx8_user[i])
+                );
+            end
+
+            wire [DATA_WIDTH - 1:0] out_data;
+            wire [DATA_WIDTH / 8 - 1:0] out_keep;
+            wire out_last;
+            wire [DATA_WIDTH / 8 - 1:0] out_user;
+            wire [ID_WIDTH - 1:0] out_dest;
+            wire out_valid;
+            wire out_ready;
+
+            axis_interconnect_ingress axis_interconnect_sim_out_i(
+                .ACLK(eth_clk),
+                .ARESETN(~reset_eth),
+
+                .S00_AXIS_ACLK(eth_clk),
+                .S00_AXIS_ARESETN(~reset_eth),
+                .S00_AXIS_TVALID(eth_tx8_valid[0]),
+                .S00_AXIS_TREADY(eth_tx8_ready[0]),
+                .S00_AXIS_TDATA(eth_tx8_data[0]),
+                .S00_AXIS_TKEEP(1'b1),
+                .S00_AXIS_TLAST(eth_tx8_last[0]),
+                .S00_AXIS_TID(3'd0),
+                .S00_AXIS_TUSER(eth_tx8_user[0]),
+
+                .S01_AXIS_ACLK(eth_clk),
+                .S01_AXIS_ARESETN(~reset_eth),
+                .S01_AXIS_TVALID(eth_tx8_valid[1]),
+                .S01_AXIS_TREADY(eth_tx8_ready[1]),
+                .S01_AXIS_TDATA(eth_tx8_data[1]),
+                .S01_AXIS_TKEEP(1'b1),
+                .S01_AXIS_TLAST(eth_tx8_last[1]),
+                .S01_AXIS_TID(3'd1),
+                .S01_AXIS_TUSER(eth_tx8_user[1]),
+
+                .S02_AXIS_ACLK(eth_clk),
+                .S02_AXIS_ARESETN(~reset_eth),
+                .S02_AXIS_TVALID(eth_tx8_valid[2]),
+                .S02_AXIS_TREADY(eth_tx8_ready[2]),
+                .S02_AXIS_TDATA(eth_tx8_data[2]),
+                .S02_AXIS_TKEEP(1'b1),
+                .S02_AXIS_TLAST(eth_tx8_last[2]),
+                .S02_AXIS_TID(3'd2),
+                .S02_AXIS_TUSER(eth_tx8_user[2]),
+
+                .S03_AXIS_ACLK(eth_clk),
+                .S03_AXIS_ARESETN(~reset_eth),
+                .S03_AXIS_TVALID(eth_tx8_valid[3]),
+                .S03_AXIS_TREADY(eth_tx8_ready[3]),
+                .S03_AXIS_TDATA(eth_tx8_data[3]),
+                .S03_AXIS_TKEEP(1'b1),
+                .S03_AXIS_TLAST(eth_tx8_last[3]),
+                .S03_AXIS_TID(3'd3),
+                .S03_AXIS_TUSER(eth_tx8_user[3]),
+
+                .S04_AXIS_ACLK(eth_clk),
+                .S04_AXIS_ARESETN(~reset_eth),
+                .S04_AXIS_TVALID(1'b0),
+                .S04_AXIS_TREADY(),
+                .S04_AXIS_TDATA(0),
+                .S04_AXIS_TKEEP(1'b1),
+                .S04_AXIS_TLAST(1'b0),
+                .S04_AXIS_TID(3'd4),
+                .S04_AXIS_TUSER(1'b0),
+
+                .M00_AXIS_ACLK(eth_clk),
+                .M00_AXIS_ARESETN(~reset_eth),
+                .M00_AXIS_TVALID(out_valid),
+                .M00_AXIS_TREADY(out_ready),
+                .M00_AXIS_TDATA(out_data),
+                .M00_AXIS_TKEEP(out_keep),
+                .M00_AXIS_TLAST(out_last),
+                .M00_AXIS_TID(out_dest),
+                .M00_AXIS_TUSER(out_user),
+
+                .S00_ARB_REQ_SUPPRESS(0),
+                .S01_ARB_REQ_SUPPRESS(0),
+                .S02_ARB_REQ_SUPPRESS(0),
+                .S03_ARB_REQ_SUPPRESS(0),
+                .S04_ARB_REQ_SUPPRESS(0),
+
+                .S00_FIFO_DATA_COUNT(),
+                .S01_FIFO_DATA_COUNT(),
+                .S02_FIFO_DATA_COUNT(),
+                .S03_FIFO_DATA_COUNT(),
+                .S04_FIFO_DATA_COUNT()
+            );
+
+            axis_receiver axis_receiver_i(
+                .clk(eth_clk),
+                .reset(reset_eth),
+
+                .s_data(out_data),
+                .s_keep(out_keep),
+                .s_last(out_last),
+                .s_user(out_user),
+                .s_dest(out_dest),
+                .s_valid(out_valid),
+                .s_ready(out_ready)
             );
         end
     endgenerate
@@ -291,9 +527,6 @@ module tanlabs(
         .out_led(out_led)
     );
     assign sfp_led = out_led;
-
-    localparam DATA_WIDTH = 64;
-    localparam ID_WIDTH = 3;
 
     wire [DATA_WIDTH - 1:0] eth_rx_data;
     wire [DATA_WIDTH / 8 - 1:0] eth_rx_keep;
