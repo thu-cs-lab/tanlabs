@@ -44,7 +44,7 @@ Tsinghua Advanced Networking Labs
 
 请注意，上述PCAP文件中使用VLAN ID标识入接口以及出接口，实际传输的以太网帧不含有VLAN信息。
 
-此外，在使用`tb.sv`进行全系统的仿真前，实验者需要先在Tcl Console执行如下命令来开启仿真模式，省略IP核部分初始化等逻辑以加快仿真：
+此外，在使用`tb.sv`进行全系统的仿真前，若实验者设置`FAST_BEHAV=0`，那么实验者需要先在Tcl Console执行如下命令来开启仿真模式，省略IP核部分初始化等逻辑以加快仿真：
 
 ```
 set_property CONFIG.SIMULATION_MODE {1} [get_ips axi_ethernet_0 axi_ethernet_noshared]
@@ -55,6 +55,8 @@ set_property CONFIG.SIMULATION_MODE {1} [get_ips axi_ethernet_0 axi_ethernet_nos
 ```
 set_property CONFIG.SIMULATION_MODE {0} [get_ips axi_ethernet_0 axi_ethernet_noshared]
 ```
+
+若实验者设置`FAST_BEHAV=1`，则不需要进行上述操作。
 
 关于`firmware`，请阅读`firmware/README.md`。
 
