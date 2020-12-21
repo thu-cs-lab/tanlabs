@@ -98,7 +98,7 @@ module tanlabs
     genvar i;
     generate
         if (!SIM)
-        begin
+        begin : phy_mac_ip_cores
             // Instantiate 4 PHY/MAC IP cores.
 
             assign sfp_tx_disable[0] = 1'b0;
@@ -262,7 +262,7 @@ module tanlabs
             end
         end
         else
-        begin
+        begin : axis_models
             // For simulation.
             assign gtref_clk_buf_out = gtrefclk_p;
             assign userclk2_out = gtrefclk_p;

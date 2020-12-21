@@ -29,7 +29,7 @@ module tb
 
     generate
         if (!FAST_BEHAV)
-        begin
+        begin : sfp_model
             wire [DATA_WIDTH - 1:0] in_data;
             wire [DATA_WIDTH / 8 - 1:0] in_keep;
             wire in_last;
