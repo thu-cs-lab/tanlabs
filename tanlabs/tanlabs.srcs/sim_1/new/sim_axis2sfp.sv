@@ -414,7 +414,7 @@ module sim_axis2sfp
         begin
             axis_dwidth_converter_64_8 axis_dwidth_converter_64_8_i(
                 .aclk(eth_clk),
-                .aresetn(~reset),
+                .aresetn(~reset_eth),
 
                 .s_axis_tvalid(eth_tx_valid[i]),
                 .s_axis_tready(eth_tx_ready[i]),

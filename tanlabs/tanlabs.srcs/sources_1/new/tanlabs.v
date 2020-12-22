@@ -371,7 +371,7 @@ module tanlabs
             begin
                 axis_dwidth_converter_64_8 axis_dwidth_converter_64_8_i(
                     .aclk(eth_clk),
-                    .aresetn(~reset),
+                    .aresetn(~reset_eth),
 
                     .s_axis_tvalid(sim_tx_valid[i]),
                     .s_axis_tready(sim_tx_ready[i]),
