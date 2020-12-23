@@ -1,3 +1,4 @@
+`default_nettype none
 `timescale 1ns / 1ps
 
 module frame_filter
@@ -6,18 +7,18 @@ module frame_filter
     parameter ID_WIDTH = 3
 )
 (
-    input eth_clk,
-    input reset,
+    input wire eth_clk,
+    input wire reset,
 
-    input [DATA_WIDTH - 1:0] s_data,
-    input [DATA_WIDTH / 8 - 1:0] s_keep,
-    input s_last,
-    input [DATA_WIDTH / 8 - 1:0] s_user,
-    input [ID_WIDTH - 1:0] s_id,
-    input s_valid,
+    input wire [DATA_WIDTH - 1:0] s_data,
+    input wire [DATA_WIDTH / 8 - 1:0] s_keep,
+    input wire s_last,
+    input wire [DATA_WIDTH / 8 - 1:0] s_user,
+    input wire [ID_WIDTH - 1:0] s_id,
+    input wire s_valid,
     output wire s_ready,
 
-    input drop,
+    input wire drop,
 
     output wire [DATA_WIDTH - 1:0] m_data,
     output wire [DATA_WIDTH / 8 - 1:0] m_keep,
@@ -25,7 +26,7 @@ module frame_filter
     output wire [DATA_WIDTH / 8 - 1:0] m_user,
     output wire [ID_WIDTH - 1:0] m_id,
     output wire m_valid,
-    input m_ready
+    input wire m_ready
 );
 
     assign m_data = s_data;

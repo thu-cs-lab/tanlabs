@@ -1,9 +1,10 @@
+`default_nettype none
 `timescale 1ns / 1ps
 
 module led_delayer(
-    input clk,
-    input reset,
-    input [7:0] in_led,
+    input wire clk,
+    input wire reset,
+    input wire [7:0] in_led,
     output wire [7:0] out_led
 );
 

@@ -1,3 +1,4 @@
+`default_nettype none
 `timescale 1ps / 1ps
 
 module sim_axis2sfp
@@ -6,16 +7,16 @@ module sim_axis2sfp
     parameter ID_WIDTH = 3
 )
 (
-    input reset,
+    input wire reset,
 
-    input clk_125M,
+    input wire clk_125M,
 
-    input [DATA_WIDTH - 1:0] s_data,
-    input [DATA_WIDTH / 8 - 1:0] s_keep,
-    input s_last,
-    input [DATA_WIDTH / 8 - 1:0] s_user,
-    input [ID_WIDTH - 1:0] s_dest,
-    input s_valid,
+    input wire [DATA_WIDTH - 1:0] s_data,
+    input wire [DATA_WIDTH / 8 - 1:0] s_keep,
+    input wire s_last,
+    input wire [DATA_WIDTH / 8 - 1:0] s_user,
+    input wire [ID_WIDTH - 1:0] s_dest,
+    input wire s_valid,
     output wire s_ready,
 
     output wire [DATA_WIDTH - 1:0] m_data,
@@ -24,10 +25,10 @@ module sim_axis2sfp
     output wire [DATA_WIDTH / 8 - 1:0] m_user,
     output wire [ID_WIDTH - 1:0] m_id,
     output wire m_valid,
-    input m_ready,
+    input wire m_ready,
 
-    input [3:0] sfp_rx_p,
-    input [3:0] sfp_rx_n,
+    input wire [3:0] sfp_rx_p,
+    input wire [3:0] sfp_rx_n,
     output wire [3:0] sfp_tx_p,
     output wire [3:0] sfp_tx_n
 );

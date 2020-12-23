@@ -1,3 +1,4 @@
+`default_nettype none
 `timescale 1ps / 1ps
 
 // Read 64-bit AXI-Stream, and print.
@@ -8,15 +9,15 @@ module axis_receiver
     parameter ID_WIDTH = 3
 )
 (
-    input clk,
-    input reset,
+    input wire clk,
+    input wire reset,
 
-    input [DATA_WIDTH - 1:0] s_data,
-    input [DATA_WIDTH / 8 - 1:0] s_keep,
-    input s_last,
-    input [DATA_WIDTH / 8 - 1:0] s_user,
-    input [ID_WIDTH - 1:0] s_dest,
-    input s_valid,
+    input wire [DATA_WIDTH - 1:0] s_data,
+    input wire [DATA_WIDTH / 8 - 1:0] s_keep,
+    input wire s_last,
+    input wire [DATA_WIDTH / 8 - 1:0] s_user,
+    input wire [ID_WIDTH - 1:0] s_dest,
+    input wire s_valid,
     output wire s_ready
 );
 

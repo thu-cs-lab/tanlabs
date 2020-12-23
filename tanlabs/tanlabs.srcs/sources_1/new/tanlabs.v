@@ -1,3 +1,4 @@
+`default_nettype none
 `timescale 1ns / 1ps
 
 /* Tsinghua Advanced Networking Labs */
@@ -7,10 +8,10 @@ module tanlabs
     parameter SIM = 0
 )
 (
-    input RST,
+    input wire RST,
 
-    input gtrefclk_p,
-    input gtrefclk_n,
+    input wire gtrefclk_p,
+    input wire gtrefclk_n,
 
     output wire [15:0] led,
 
@@ -20,17 +21,17 @@ module tanlabs
     // +-+-+
     // |1|3|
     // +-+-+
-    input [3:0] sfp_rx_los,
-    input [3:0] sfp_rx_p,
-    input [3:0] sfp_rx_n,
+    input wire [3:0] sfp_rx_los,
+    input wire [3:0] sfp_rx_p,
+    input wire [3:0] sfp_rx_n,
     output wire [3:0] sfp_tx_disable,
     output wire [3:0] sfp_tx_p,
     output wire [3:0] sfp_tx_n,
     output wire [7:0] sfp_led,  // 0 1  2 3  4 5  6 7
 
     // unused.
-    input sfp_sda,
-    input sfp_scl
+    input wire sfp_sda,
+    input wire sfp_scl
 );
 
     localparam DATA_WIDTH = 64;
