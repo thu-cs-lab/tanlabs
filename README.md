@@ -5,7 +5,7 @@ Tsinghua Advanced Networking Labs
 目录说明：
 
 * `tanlabs`：硬件路由器实验框架
-* `firmware`：运行在CPU上的软件的框架
+* `firmware`：运行在CPU上的软件的框架（固件框架）
 * `ibert_7series_gtp_1.25G_ex`：1.25Gbps的IBERT测试工具
 * `ibert_7series_gtp_6.25G_ex`：6.25Gbps的IBERT测试工具
 * `figures`：仅供参考的图片
@@ -14,7 +14,7 @@ Tsinghua Advanced Networking Labs
 
 ![regenerate](figures/regenerate.png)
 
-此外，开始实验前，请实验者先阅读`tanlabs/tanlabs.srcs/sources_1/new/`以及`tanlabs/tanlabs.srcs/sim_1/new/`中所有文件。以下为每个文件的大致说明。
+此外，开始实验前，请实验者先阅读`tanlabs/tanlabs.srcs/sources_1/new/`、`tanlabs/tanlabs.srcs/sim_1/new/`以及`firmware`中所有文件。以下为每个文件的大致说明。
 
 `tanlabs/tanlabs.srcs/sources_1/new/`文件说明：
 
@@ -43,4 +43,20 @@ Tsinghua Advanced Networking Labs
 * **此外，实验者还需要为ARP缓存、转发表、CPU等模块建立新的仿真测试文件。**
 
 请注意，上述PCAP文件中使用VLAN ID标识入接口以及出接口，实际传输的以太网帧不含有VLAN信息。
+
+此外，在使用`tb.sv`进行全系统的仿真前，若实验者设置`FAST_BEHAV=1`，则实验者可以直接开始进行快速行为级仿真。这样的仿真配置略去了SFP接口IP核，将实验框架直接接入AXI-Stream协议仿真模块。此处建议实验者设置`FAST_BEHAV=1`。
+
+若实验者设置`FAST_BEHAV=0`，那么实验者需要先在Tcl Console执行如下命令来开启仿真模式，省略IP核部分初始化等逻辑以加快仿真：
+
+```
+set_property CONFIG.SIMULATION_MODE {1} [get_ips axi_ethernet_0 axi_ethernet_noshared]
+```
+
+仿真后，在综合并生成bitstream前需要执行如下命令来恢复设置：
+
+```
+set_property CONFIG.SIMULATION_MODE {0} [get_ips axi_ethernet_0 axi_ethernet_noshared]
+```
+
+关于`firmware`，请阅读`firmware/README.md`。
 

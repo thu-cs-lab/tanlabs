@@ -2,6 +2,7 @@
 *.o
 *.elf
 *.bin
+*.asm
 *.coe
 *.prm
 *.cache/

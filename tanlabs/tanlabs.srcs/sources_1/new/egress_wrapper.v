@@ -6,21 +6,21 @@ module egress_wrapper
     parameter ID_WIDTH = 3
 )
 (
-    input eth_clk,
-    input reset,
+    input wire eth_clk,
+    input wire reset,
 
-    input [DATA_WIDTH - 1:0] s_data,
-    input [DATA_WIDTH / 8 - 1:0] s_keep,
-    input s_last,
-    input [DATA_WIDTH / 8 - 1:0] s_user,
-    input s_valid,
+    input wire [DATA_WIDTH - 1:0] s_data,
+    input wire [DATA_WIDTH / 8 - 1:0] s_keep,
+    input wire s_last,
+    input wire [DATA_WIDTH / 8 - 1:0] s_user,
+    input wire s_valid,
     output wire s_ready,
 
     output wire [7:0] m_data,
     output wire m_last,
     output wire m_user,
     output wire m_valid,
-    input m_ready
+    input wire m_ready
 );
 
     assign s_ready = 1'b1;  // We drop frames when the FIFO is almost full, so we are always ready.

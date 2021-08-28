@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 
 module reset_sync(
-    input clk,
-    input i,
+    input wire clk,
+    input wire i,
     output wire o
 );
 
