@@ -3,7 +3,7 @@
 // Example Pipeline Frame Data Path.
 // It provides useless features, but lets you be familiar with tanlabs. 
 
-module frame_datapath_useless
+module frame_datapath_example
 #(
     parameter DATA_WIDTH = 64,
     parameter ID_WIDTH = 3
