@@ -1,4 +1,3 @@
-`default_nettype none
 `timescale 1ps / 1ps
 
 // Read frames.txt, and send to 64-bit AXI-Stream.
