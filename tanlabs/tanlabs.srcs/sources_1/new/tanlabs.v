@@ -1,6 +1,7 @@
 `timescale 1ns / 1ps
 
 /* Tsinghua Advanced Networking Labs */
+/* with Power On Self Test */
 
 module tanlabs
 #(
@@ -28,9 +29,62 @@ module tanlabs
     output wire [3:0] sfp_tx_n,
     output wire [7:0] sfp_led,  // 0 1  2 3  4 5  6 7
 
-    // unused.
+    // I2C for SFP, unused.
     input wire sfp_sda,
-    input wire sfp_scl
+    input wire sfp_scl,
+
+    input wire clk_50M,
+
+    input wire BTN,
+    input wire [3:0] touch_btn,
+    input wire [31:0] dip_sw,
+    output wire [7:0] dpy0,
+    output wire [7:0] dpy1,
+
+    // CPLD UART.
+    output wire uart_rdn,
+    output wire uart_wrn,
+    input wire uart_dataready,
+    input wire uart_tbre,
+    input wire uart_tsre,
+
+    // SRAMs.
+    inout wire [31:0] base_ram_data,
+    output wire [19:0] base_ram_addr,
+    output wire [3:0] base_ram_be_n,
+    output wire base_ram_ce_n,
+    output wire base_ram_oe_n,
+    output wire base_ram_we_n,
+
+    inout wire [31:0] ext_ram_data,
+    output wire [19:0] ext_ram_addr,
+    output wire [3:0] ext_ram_be_n,
+    output wire ext_ram_ce_n,
+    output wire ext_ram_oe_n,
+    output wire ext_ram_we_n,
+
+    // UART.
+    output wire txd,
+    input wire rxd,
+
+    // Flash.
+    output wire [22:0] flash_a,
+    inout wire [15:0] flash_d,
+    output wire flash_rp_n,
+    output wire flash_vpen,
+    output wire flash_ce_n,
+    output wire flash_oe_n,
+    output wire flash_we_n,
+    output wire flash_byte_n,
+
+    // HDMI.
+    output wire [2:0] video_red,
+    output wire [2:0] video_green,
+    output wire [1:0] video_blue,
+    output wire video_hsync,
+    output wire video_vsync,
+    output wire video_clk,
+    output wire video_de
 );
 
     localparam DATA_WIDTH = 64;
@@ -46,10 +100,12 @@ module tanlabs
     wire ref_clk;  // 200MHz for the PHY/MAC IP core
     wire core_clk;  // README: This is for CPU and other components. You can change the frequency
     // by re-customizing the following IP core.
+    wire ram_clk;
 
     clk_wiz_0 clk_wiz_0_i(
         .ref_clk_out(ref_clk),
         .core_clk_out(core_clk),
+        .ram_clk_out(ram_clk),
         .reset(1'b0),
         .locked(locked),
         .clk_in1(gtref_clk)
@@ -84,16 +140,16 @@ module tanlabs
         .o(reset_eth)
     );
 
-    wire [7:0] eth_tx8_data [0:4];
-    wire eth_tx8_last [0:4];
-    wire eth_tx8_ready [0:4];
-    wire eth_tx8_user [0:4];
-    wire eth_tx8_valid [0:4];
+    wire [7:0] eth_tx8_data [0:3];
+    wire eth_tx8_last [0:3];
+    wire eth_tx8_ready [0:3];
+    wire eth_tx8_user [0:3];
+    wire eth_tx8_valid [0:3];
 
-    wire [7:0] eth_rx8_data [0:4];
-    wire eth_rx8_last [0:4];
-    wire eth_rx8_user [0:4];
-    wire eth_rx8_valid [0:4];
+    wire [7:0] eth_rx8_data [0:3];
+    wire eth_rx8_last [0:3];
+    wire eth_rx8_user [0:3];
+    wire eth_rx8_valid [0:3];
 
     genvar i;
     generate
@@ -489,299 +545,46 @@ module tanlabs
         end
     endgenerate
 
-    wire [7:0] internal_tx_data;
-    wire internal_tx_last;
-    wire internal_tx_user;
-    wire internal_tx_valid;
-    assign eth_rx8_data[4] = internal_tx_data;
-    assign eth_rx8_last[4] = internal_tx_last;
-    assign eth_rx8_user[4] = internal_tx_user;
-    assign eth_rx8_valid[4] = internal_tx_valid;
-
-    wire [7:0] internal_rx_data = eth_tx8_data[4];
-    wire internal_rx_last = eth_tx8_last[4];
-    wire internal_rx_user = eth_tx8_user[4];
-    wire internal_rx_valid = eth_tx8_valid[4];
-    wire internal_rx_ready;
-    assign eth_tx8_ready[4] = internal_rx_ready;
-
-    // README: internal_tx_* and internal_rx_* are left for internal use.
-    // You can connect them with your CPU to transfer frames between the router part and the CPU part,
-    // and you may need to write some logic to receive from internal_rx_*, store data to some memory,
-    // read data from some memory, and send to internal_tx_*.
-    // You can also transfer frames in other ways.
-    assign internal_tx_data = 0;
-    assign internal_tx_last = 0;
-    assign internal_tx_user = 0;
-    assign internal_tx_valid = 0;
-    assign internal_rx_ready = 0;
-
     wire [7:0] out_led;
     led_delayer led_delayer_i(
         .clk(eth_clk),
         .reset(reset_eth),
-        .in_led({(eth_tx8_valid[3] & eth_tx8_ready[3]) | eth_rx8_valid[3], ~sfp_rx_los[3],
-                 (eth_tx8_valid[2] & eth_tx8_ready[2]) | eth_rx8_valid[2], ~sfp_rx_los[2],
-                 (eth_tx8_valid[1] & eth_tx8_ready[1]) | eth_rx8_valid[1], ~sfp_rx_los[1],
-                 (eth_tx8_valid[0] & eth_tx8_ready[0]) | eth_rx8_valid[0], ~sfp_rx_los[0]}),
+        .in_led({eth_tx8_valid[3] & eth_tx8_ready[3], ~sfp_rx_los[3],
+                 eth_tx8_valid[2] & eth_tx8_ready[2], ~sfp_rx_los[2],
+                 eth_tx8_valid[1] & eth_tx8_ready[1], ~sfp_rx_los[1],
+                 eth_tx8_valid[0] & eth_tx8_ready[0], ~sfp_rx_los[0]}),
         .out_led(out_led)
     );
     assign sfp_led = out_led;
 
-    wire [DATA_WIDTH - 1:0] eth_rx_data;
-    wire [DATA_WIDTH / 8 - 1:0] eth_rx_keep;
-    wire eth_rx_last;
-    wire [DATA_WIDTH / 8 - 1:0] eth_rx_user;
-    wire [ID_WIDTH - 1:0] eth_rx_id;
-    wire eth_rx_valid;
-
-    axis_interconnect_ingress axis_interconnect_ingress_i(
-        .ACLK(eth_clk),
-        .ARESETN(~reset_eth),
-
-        .S00_AXIS_ACLK(eth_clk),
-        .S00_AXIS_ARESETN(~reset_eth),
-        .S00_AXIS_TVALID(eth_rx8_valid[0]),
-        .S00_AXIS_TREADY(debug_ingress_interconnect_ready[0]),
-        .S00_AXIS_TDATA(eth_rx8_data[0]),
-        .S00_AXIS_TKEEP(1'b1),
-        .S00_AXIS_TLAST(eth_rx8_last[0]),
-        .S00_AXIS_TID(3'd0),
-        .S00_AXIS_TUSER(eth_rx8_user[0]),
-
-        .S01_AXIS_ACLK(eth_clk),
-        .S01_AXIS_ARESETN(~reset_eth),
-        .S01_AXIS_TVALID(eth_rx8_valid[1]),
-        .S01_AXIS_TREADY(debug_ingress_interconnect_ready[1]),
-        .S01_AXIS_TDATA(eth_rx8_data[1]),
-        .S01_AXIS_TKEEP(1'b1),
-        .S01_AXIS_TLAST(eth_rx8_last[1]),
-        .S01_AXIS_TID(3'd1),
-        .S01_AXIS_TUSER(eth_rx8_user[1]),
-
-        .S02_AXIS_ACLK(eth_clk),
-        .S02_AXIS_ARESETN(~reset_eth),
-        .S02_AXIS_TVALID(eth_rx8_valid[2]),
-        .S02_AXIS_TREADY(debug_ingress_interconnect_ready[2]),
-        .S02_AXIS_TDATA(eth_rx8_data[2]),
-        .S02_AXIS_TKEEP(1'b1),
-        .S02_AXIS_TLAST(eth_rx8_last[2]),
-        .S02_AXIS_TID(3'd2),
-        .S02_AXIS_TUSER(eth_rx8_user[2]),
-
-        .S03_AXIS_ACLK(eth_clk),
-        .S03_AXIS_ARESETN(~reset_eth),
-        .S03_AXIS_TVALID(eth_rx8_valid[3]),
-        .S03_AXIS_TREADY(debug_ingress_interconnect_ready[3]),
-        .S03_AXIS_TDATA(eth_rx8_data[3]),
-        .S03_AXIS_TKEEP(1'b1),
-        .S03_AXIS_TLAST(eth_rx8_last[3]),
-        .S03_AXIS_TID(3'd3),
-        .S03_AXIS_TUSER(eth_rx8_user[3]),
-
-        .S04_AXIS_ACLK(eth_clk),
-        .S04_AXIS_ARESETN(~reset_eth),
-        .S04_AXIS_TVALID(eth_rx8_valid[4]),
-        .S04_AXIS_TREADY(debug_ingress_interconnect_ready[4]),
-        .S04_AXIS_TDATA(eth_rx8_data[4]),
-        .S04_AXIS_TKEEP(1'b1),
-        .S04_AXIS_TLAST(eth_rx8_last[4]),
-        .S04_AXIS_TID(3'd4),
-        .S04_AXIS_TUSER(eth_rx8_user[4]),
-
-        .M00_AXIS_ACLK(eth_clk),
-        .M00_AXIS_ARESETN(~reset_eth),
-        .M00_AXIS_TVALID(eth_rx_valid),
-        .M00_AXIS_TREADY(1'b1),
-        .M00_AXIS_TDATA(eth_rx_data),
-        .M00_AXIS_TKEEP(eth_rx_keep),
-        .M00_AXIS_TLAST(eth_rx_last),
-        .M00_AXIS_TID(eth_rx_id),
-        .M00_AXIS_TUSER(eth_rx_user),
-
-        .S00_ARB_REQ_SUPPRESS(0),
-        .S01_ARB_REQ_SUPPRESS(0),
-        .S02_ARB_REQ_SUPPRESS(0),
-        .S03_ARB_REQ_SUPPRESS(0),
-        .S04_ARB_REQ_SUPPRESS(0),
-
-        .S00_FIFO_DATA_COUNT(),
-        .S01_FIFO_DATA_COUNT(),
-        .S02_FIFO_DATA_COUNT(),
-        .S03_FIFO_DATA_COUNT(),
-        .S04_FIFO_DATA_COUNT()
-    );
-
-    wire [DATA_WIDTH - 1:0] dp_rx_data;
-    wire [DATA_WIDTH / 8 - 1:0] dp_rx_keep;
-    wire dp_rx_last;
-    wire [DATA_WIDTH / 8 - 1:0] dp_rx_user;
-    wire [ID_WIDTH - 1:0] dp_rx_id;
-    wire dp_rx_valid;
-    wire dp_rx_ready;
-
-    frame_datapath_fifo
-    #(
-        .ENABLE(1),  // README: enable this if your datapath may block.
-        .DATA_WIDTH(DATA_WIDTH),
-        .ID_WIDTH(ID_WIDTH)
-    )
-    frame_datapath_fifo_i(
-        .eth_clk(eth_clk),
-        .reset(reset_eth),
-
-        .s_data(eth_rx_data),
-        .s_keep(eth_rx_keep),
-        .s_last(eth_rx_last),
-        .s_user(eth_rx_user),
-        .s_id(eth_rx_id),
-        .s_valid(eth_rx_valid),
-        .s_ready(debug_datapath_fifo_ready),
-
-        .m_data(dp_rx_data),
-        .m_keep(dp_rx_keep),
-        .m_last(dp_rx_last),
-        .m_user(dp_rx_user),
-        .m_id(dp_rx_id),
-        .m_valid(dp_rx_valid),
-        .m_ready(dp_rx_ready)
-    );
-
-    wire [DATA_WIDTH - 1:0] dp_tx_data;
-    wire [DATA_WIDTH / 8 - 1:0] dp_tx_keep;
-    wire dp_tx_last;
-    wire [DATA_WIDTH / 8 - 1:0] dp_tx_user;
-    wire [ID_WIDTH - 1:0] dp_tx_dest;
-    wire dp_tx_valid;
-
-    // README: Instantiate your datapath.
-    frame_datapath
-    #(
-        .DATA_WIDTH(DATA_WIDTH),
-        .ID_WIDTH(ID_WIDTH)
-    )
-    frame_datapath_i(
-        .eth_clk(eth_clk),
-        .reset(reset_eth),
-
-        .s_data(dp_rx_data),
-        .s_keep(dp_rx_keep),
-        .s_last(dp_rx_last),
-        .s_user(dp_rx_user),
-        .s_id(dp_rx_id),
-        .s_valid(dp_rx_valid),
-        .s_ready(dp_rx_ready),
-
-        .m_data(dp_tx_data),
-        .m_keep(dp_tx_keep),
-        .m_last(dp_tx_last),
-        .m_user(dp_tx_user),
-        .m_dest(dp_tx_dest),
-        .m_valid(dp_tx_valid),
-        .m_ready(1'b1)
-
-        // README: You will need to add some signals for your CPU to control the datapath,
-        // or access the forwarding table or the address resolution cache.
-    );
-
-    wire [DATA_WIDTH - 1:0] eth_tx_data [0:4];
-    wire [DATA_WIDTH / 8 - 1:0] eth_tx_keep [0:4];
-    wire eth_tx_last [0:4];
-    wire eth_tx_ready [0:4];
-    wire [DATA_WIDTH / 8 - 1:0] eth_tx_user [0:4];
-    wire eth_tx_valid [0:4];
-
-    axis_interconnect_egress axis_interconnect_egress_i(
-        .ACLK(eth_clk),
-        .ARESETN(~reset_eth),
-
-        .S00_AXIS_ACLK(eth_clk),
-        .S00_AXIS_ARESETN(~reset_eth),
-        .S00_AXIS_TVALID(dp_tx_valid),
-        .S00_AXIS_TREADY(debug_egress_interconnect_ready),
-        .S00_AXIS_TDATA(dp_tx_data),
-        .S00_AXIS_TKEEP(dp_tx_keep),
-        .S00_AXIS_TLAST(dp_tx_last),
-        .S00_AXIS_TDEST(dp_tx_dest),
-        .S00_AXIS_TUSER(dp_tx_user),
-
-        .M00_AXIS_ACLK(eth_clk),
-        .M00_AXIS_ARESETN(~reset_eth),
-        .M00_AXIS_TVALID(eth_tx_valid[0]),
-        .M00_AXIS_TREADY(eth_tx_ready[0]),
-        .M00_AXIS_TDATA(eth_tx_data[0]),
-        .M00_AXIS_TKEEP(eth_tx_keep[0]),
-        .M00_AXIS_TLAST(eth_tx_last[0]),
-        .M00_AXIS_TDEST(),
-        .M00_AXIS_TUSER(eth_tx_user[0]),
-
-        .M01_AXIS_ACLK(eth_clk),
-        .M01_AXIS_ARESETN(~reset_eth),
-        .M01_AXIS_TVALID(eth_tx_valid[1]),
-        .M01_AXIS_TREADY(eth_tx_ready[1]),
-        .M01_AXIS_TDATA(eth_tx_data[1]),
-        .M01_AXIS_TKEEP(eth_tx_keep[1]),
-        .M01_AXIS_TLAST(eth_tx_last[1]),
-        .M01_AXIS_TDEST(),
-        .M01_AXIS_TUSER(eth_tx_user[1]),
-
-        .M02_AXIS_ACLK(eth_clk),
-        .M02_AXIS_ARESETN(~reset_eth),
-        .M02_AXIS_TVALID(eth_tx_valid[2]),
-        .M02_AXIS_TREADY(eth_tx_ready[2]),
-        .M02_AXIS_TDATA(eth_tx_data[2]),
-        .M02_AXIS_TKEEP(eth_tx_keep[2]),
-        .M02_AXIS_TLAST(eth_tx_last[2]),
-        .M02_AXIS_TDEST(),
-        .M02_AXIS_TUSER(eth_tx_user[2]),
-
-        .M03_AXIS_ACLK(eth_clk),
-        .M03_AXIS_ARESETN(~reset_eth),
-        .M03_AXIS_TVALID(eth_tx_valid[3]),
-        .M03_AXIS_TREADY(eth_tx_ready[3]),
-        .M03_AXIS_TDATA(eth_tx_data[3]),
-        .M03_AXIS_TKEEP(eth_tx_keep[3]),
-        .M03_AXIS_TLAST(eth_tx_last[3]),
-        .M03_AXIS_TDEST(),
-        .M03_AXIS_TUSER(eth_tx_user[3]),
-
-        .M04_AXIS_ACLK(eth_clk),
-        .M04_AXIS_ARESETN(~reset_eth),
-        .M04_AXIS_TVALID(eth_tx_valid[4]),
-        .M04_AXIS_TREADY(eth_tx_ready[4]),
-        .M04_AXIS_TDATA(eth_tx_data[4]),
-        .M04_AXIS_TKEEP(eth_tx_keep[4]),
-        .M04_AXIS_TLAST(eth_tx_last[4]),
-        .M04_AXIS_TDEST(),
-        .M04_AXIS_TUSER(eth_tx_user[4]),
-
-        .S00_DECODE_ERR()
-    );
-
     generate
-        for (i = 0; i < 5; i = i + 1)
+        for (i = 0; i < 4; i = i + 1)
         begin
-            egress_wrapper
-            #(
-                .DATA_WIDTH(DATA_WIDTH),
-                .ID_WIDTH(ID_WIDTH)
-            )
-            egress_wrapper_i(
-                .eth_clk(eth_clk),
-                .reset(reset_eth),
+            wire [511:0] data;
+            case (i)
+            0: assign data = 512'h41414141414141414141414141414141414102020202ffffffffffff0101010122222222222201000406000801000608222222222222ffffffffffff;
+            1: assign data = 512'h42424242424242424242424242424242424242424242424242420202020201010101ca740040000001002e0000450008222222222222ffffffffffff;
+            2: assign data = 512'h434343434343222200000000000000000000b80d0120111100000000000000000000b80d01204000060000000060dd86222222222222ffffffffffff;
+            3: assign data = 512'h444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444440000222222222222ffffffffffff;
+            endcase
 
-                .s_data(eth_tx_data[i]),
-                .s_keep(eth_tx_keep[i]),
-                .s_last(eth_tx_last[i]),
-                .s_user(eth_tx_user[i]),
-                .s_valid(eth_tx_valid[i]),
-                .s_ready(eth_tx_ready[i]),
+            axis_dwidth_converter_512_8 axis_dwidth_converter_512_8_i(
+                .aclk(eth_clk),
+                .aresetn(~reset_eth),
 
-                .m_data(eth_tx8_data[i]),
-                .m_last(eth_tx8_last[i]),
-                .m_user(eth_tx8_user[i]),
-                .m_valid(eth_tx8_valid[i]),
-                .m_ready(eth_tx8_ready[i])
+                .s_axis_tvalid(1'b1),
+                .s_axis_tready(),
+                .s_axis_tdata(data),
+                .s_axis_tkeep(64'h0fffffffffffffff),
+                .s_axis_tlast(1'b1),
+                .s_axis_tuser(64'd0),
+
+                .m_axis_tvalid(eth_tx8_valid[i]),
+                .m_axis_tready(eth_tx8_ready[i]),
+                .m_axis_tdata(eth_tx8_data[i]),
+                .m_axis_tkeep(),
+                .m_axis_tlast(eth_tx8_last[i]),
+                .m_axis_tuser(eth_tx8_user[i])
             );
         end
     endgenerate
@@ -789,12 +592,12 @@ module tanlabs
     led_delayer led_delayer_debug_i1(
         .clk(eth_clk),
         .reset(reset_eth),
-        .in_led({1'b0, ~debug_egress_interconnect_ready,
-                 ~debug_datapath_fifo_ready,
-                 ~debug_ingress_interconnect_ready}),
+        .in_led({eth_rx8_user[3], eth_rx8_valid[3],
+                 eth_rx8_user[2], eth_rx8_valid[2],
+                 eth_rx8_user[1], eth_rx8_valid[1],
+                 eth_rx8_user[0], eth_rx8_valid[0]}),
         .out_led(led[7:0])
     );
-    assign led[15:8] = 0;
 
     // README: You may use this to reset your CPU.
     wire reset_core;
@@ -805,4 +608,217 @@ module tanlabs
     );
 
     // README: Your code here.
+
+    wire reset_50M;
+    reset_sync reset_sync_reset_50m(
+        .clk(clk_50M),
+        .i(reset_not_sync),
+        .o(reset_50M)
+    );
+
+    // Blink Test.
+    reg [7:0] blink;
+    integer counter;
+    always @ (posedge clk_50M or posedge reset_50M)
+    begin
+        if (reset_50M)
+        begin
+            blink <= 8'b10110111;
+            counter <= 0;
+        end
+        else
+        begin
+            if (counter == 25000000 - 1)
+            begin
+                counter <= 0;
+                blink <= {blink[6:0], blink[7]};
+            end
+            else
+            begin
+                counter <= counter + 1;
+            end 
+        end
+    end
+    assign led[15:8] = blink;
+
+    // HDMI Test. 800x600 @ 75Hz, pixel clock 50MHz
+    wire [11:0] hdata;
+    assign video_red = hdata < 266 ? 3'b111 : 0;
+    assign video_green = hdata < 532 && hdata >= 266 ? 3'b111 : 0;
+    assign video_blue = hdata >= 532 ? 2'b11 : 0;
+    assign video_clk = clk_50M;
+    vga #(12, 800, 856, 976, 1040, 600, 637, 643, 666, 1, 1) vga800x600at75 (
+        .clk(clk_50M), 
+        .hdata(hdata),
+        .vdata(),
+        .hsync(video_hsync),
+        .vsync(video_vsync),
+        .data_enable(video_de)
+    );
+
+    // Counter Test.
+    reg [3:0] number_counter;
+    SEG7_LUT segH(.oSEG1(dpy1), .iDIG(number_counter));
+    always @ (posedge BTN or posedge RST)
+    begin
+        if (RST)
+        begin
+            number_counter <= 0;
+        end
+        else
+        begin
+            number_counter <= number_counter + 1;
+        end
+    end
+
+    // SRAM Test.
+    wire reset_ram;
+    reset_sync reset_sync_reset_ram(
+        .clk(ram_clk),
+        .i(reset_not_sync),
+        .o(reset_ram)
+    );
+
+    reg last_valid;
+    reg [20:0] ram_addr, last_addr;
+    reg [31:0] ram_data_o, last_data;
+    reg ram_we;
+    wire [3:0] ram_be = 4'b1111;
+
+    assign base_ram_addr = ram_addr[19:0];
+    assign ext_ram_addr = ram_addr[19:0];
+    wire [31:0] ram_data_i = ram_addr[20] ? ext_ram_data : base_ram_data;
+    assign base_ram_data = ram_we ? ram_data_o : 'bz;
+    assign ext_ram_data = ram_we ? ram_data_o : 'bz;
+
+    assign uart_rdn = 1'b1;
+    assign uart_wrn = 1'b1;
+    assign base_ram_be_n = ~ram_be;
+    assign base_ram_ce_n = ram_addr[20];
+    assign base_ram_oe_n = ram_we;
+    assign base_ram_we_n = ~ram_we | ram_clk;  // Magic!!!
+    assign ext_ram_be_n = ~ram_be;
+    assign ext_ram_ce_n = ~ram_addr[20];
+    assign ext_ram_oe_n = ram_we;
+    assign ext_ram_we_n = ~ram_we | ram_clk;  // Magic!!!
+
+    localparam ST_INIT = 0;
+    localparam ST_WRITE = 1;
+    localparam ST_START_READ = 2;
+    localparam ST_READ_CHECK = 3;
+    localparam ST_NEXT_PATTERN = 4;
+    localparam ST_DONE = 5;
+    localparam ST_ERROR = 6;
+
+    integer state;
+
+    reg [3:0] ram_info;
+    SEG7_LUT segL(.oSEG1(dpy0), .iDIG(ram_info));
+
+    always @ (*)
+    begin
+        ram_info = state;
+    end
+
+    localparam PATT_0 = 0;
+    localparam PATT_5 = 1;
+    localparam PATT_A = 2;
+    localparam PATT_F = 3;
+    localparam PATT_ADDR = 4;
+
+    integer pattern_state;
+    reg [31:0] pattern;
+    reg [20:0] pattern_addr;
+    always @ (*)
+    begin
+        pattern_addr = state == ST_WRITE ? ram_addr + 1 : last_addr;
+        case (pattern_state)
+        PATT_0: pattern = 32'h00000000;
+        PATT_5: pattern = 32'h55555555;
+        PATT_A: pattern = 32'hAAAAAAAA;
+        PATT_F: pattern = 32'hFFFFFFFF;
+        default: pattern = {pattern_addr[10:0], pattern_addr};
+        endcase
+    end
+
+    always @ (posedge ram_clk or posedge reset_ram)
+    begin
+        if (reset_ram)
+        begin
+            state <= ST_WRITE;
+            pattern_state <= PATT_0;
+            ram_addr <= 21'h1fffff;
+            ram_data_o <= 0;
+            ram_we <= 0;
+            last_valid <= 1'b0;
+            last_addr <= 0;
+            last_data <= 0;
+        end
+        else
+        begin
+            case (state)
+            ST_WRITE:
+            begin
+                if (ram_addr + 1 == 21'h1fffff)
+                begin
+                    state <= ST_START_READ;
+                end
+                ram_we <= 1'b1;
+                ram_data_o <= pattern;
+                ram_addr <= ram_addr + 1;
+            end
+            ST_START_READ:
+            begin
+                ram_we <= 1'b0;
+                ram_addr <= 0;
+                last_valid <= 1'b0;
+                state <= ST_READ_CHECK;
+            end
+            ST_READ_CHECK:
+            begin
+                if (last_valid && last_data != pattern)
+                begin
+                    state <= ST_ERROR;
+                end
+                else if (last_valid && last_addr == 21'h1fffff)
+                begin
+                    state <= ST_NEXT_PATTERN;
+                end
+                else
+                begin
+                    last_valid <= 1'b1;
+                    last_addr <= ram_addr;
+                    last_data <= ram_data_i;
+                    ram_addr <= ram_addr + 1;
+                end
+            end
+            ST_NEXT_PATTERN:
+            begin
+                state <= ST_WRITE;
+                ram_addr <= 21'h1fffff;
+                case (pattern_state)
+                PATT_0: pattern_state <= PATT_5;
+                PATT_5: pattern_state <= PATT_A;
+                PATT_A: pattern_state <= PATT_F;
+                PATT_F: pattern_state <= PATT_ADDR;
+                PATT_ADDR: pattern_state <= PATT_0;
+                /*begin
+                    state <= ST_DONE;
+                end*/
+                default: pattern_state <= PATT_0;
+                endcase
+            end
+            ST_DONE:
+            begin
+                
+            end
+            ST_ERROR:
+            begin
+                
+            end
+            default:
+                state <= ST_INIT;
+            endcase
+        end
+    end
 endmodule
