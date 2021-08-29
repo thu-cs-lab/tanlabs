@@ -10,6 +10,8 @@ Tsinghua Advanced Networking Labs
 * `ibert_7series_gtp_6.25G_ex`：6.25Gbps的IBERT测试工具
 * `figures`：仅供参考的图片
 
+取得实验板后，实验者应当仔细阅读`TEST.md`，并对实验板进行充分测试。
+
 克隆本仓库后，第一次综合实验框架前，实验者需要先选择所有模块，然后执行“Regenerate Output Products”，如下图所示。
 
 ![regenerate](figures/regenerate.png)
