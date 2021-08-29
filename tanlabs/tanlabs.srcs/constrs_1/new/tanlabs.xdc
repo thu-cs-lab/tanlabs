@@ -13,6 +13,7 @@ set_property PACKAGE_PIN AB13 [get_ports gtrefclk_n]
 create_clock -period 8.000 -name gtref_clk -waveform {0.000 4.000} [get_nets gtref_clk]
 create_clock -period 5.000 -name ref_clk -waveform {0.000 2.500} [get_nets ref_clk]
 create_clock -period 8.000 -name core_clk -waveform {0.000 4.000} [get_nets core_clk]
+create_clock -period 25.000 -name ram_clk -waveform {0.000 12.500} [get_nets ram_clk]
 
 # Reset Button (BTN6)
 set_property PACKAGE_PIN F22 [get_ports RST]
