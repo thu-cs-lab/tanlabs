@@ -37,7 +37,7 @@ module tanlabs
 
     input wire BTN,
     input wire [3:0] touch_btn,
-    input wire [31:0] dip_sw,
+    input wire [15:0] dip_sw,
     output wire [7:0] dpy0,
     output wire [7:0] dpy1,
 
