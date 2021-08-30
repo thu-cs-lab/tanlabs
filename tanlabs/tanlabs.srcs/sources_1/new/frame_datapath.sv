@@ -30,7 +30,7 @@ module frame_datapath
 
     `include "frame_datapath.vh"
 
-    frame_data in;
+    frame_beat in;
     wire in_ready;
 
     // README: Here, we use a width upsizer to change the width to 48 bytes
@@ -80,7 +80,7 @@ module frame_datapath
     // README: Your code here.
     // See the guide to figure out what you need to do with frames.
 
-    frame_data out;
+    frame_beat out;
 
     always @ (*)
     begin
@@ -129,7 +129,7 @@ module frame_datapath
     // Rewrite dest.
     wire [ID_WIDTH - 1:0] dest_current = out_is_first ? out.dest : dest;
 
-    frame_data filtered;
+    frame_beat filtered;
     wire filtered_ready;
 
     frame_filter

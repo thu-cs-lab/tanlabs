@@ -67,22 +67,10 @@ typedef struct packed
     logic drop_next;
 
     // README: Your code here.
-} frame_data;
+} frame_beat;
 
 // README: Your code here. You can define some other constants like EtherType.
 localparam ID_CPU = 3'd4;  // The interface ID of CPU is 4.
 
 localparam ETHERTYPE_IP4 = 16'h0008;
-
-// Incrementally update the checksum in an IPv4 header
-// when TTL is decreased by 1.
-// Note: This *function* should be a combinational logic.
-// Input: old checksum
-// Output: new checksum
-function [15:0] ip4_update_checksum;
-    input [15:0] sum;
-begin
-    // README: Your code here.
-    ip4_update_checksum = 0;
-end
-endfunction
+localparam ETHERTYPE_IP6 = 16'hdd86;

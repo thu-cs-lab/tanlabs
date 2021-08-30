@@ -31,7 +31,7 @@ module frame_datapath_example
 
     `include "frame_datapath.vh"
 
-    frame_data in;
+    frame_beat in;
     wire in_ready;
 
     // README: Here, we use a width upsizer to change the width to 48 bytes
@@ -83,7 +83,7 @@ module frame_datapath_example
     // README: USELESS features :-)
     // You do not have to have exactly 5 stages.
 
-    frame_data s1;
+    frame_beat s1;
     wire s1_ready;
     assign in_ready = s1_ready || !in.valid;
     always @ (posedge eth_clk or posedge reset)
@@ -111,7 +111,7 @@ module frame_datapath_example
         end
     end
 
-    frame_data s2;
+    frame_beat s2;
     wire s2_ready;
     assign s1_ready = s2_ready || !s1.valid;
     always @ (posedge eth_clk or posedge reset)
@@ -142,7 +142,7 @@ module frame_datapath_example
         ST_BAZ
     } s3_state_t;
 
-    frame_data s3_reg, s3;
+    frame_beat s3_reg, s3;
     s3_state_t s3_state;
     wire s3_ready;
     assign s2_ready = (s3_ready && s3_state == ST_SEND_RECV) || !s2.valid;
@@ -198,7 +198,7 @@ module frame_datapath_example
         end
     end
 
-    frame_data s4;
+    frame_beat s4;
     wire s4_ready;
     assign s3_ready = s4_ready || !s3.valid;
     always @ (posedge eth_clk or posedge reset)
@@ -221,7 +221,7 @@ module frame_datapath_example
         end
     end
 
-    frame_data s5;
+    frame_beat s5;
     wire s5_ready;
     assign s4_ready = s5_ready || !s4.valid;
     always @ (posedge eth_clk or posedge reset)
@@ -241,7 +241,7 @@ module frame_datapath_example
         end
     end
 
-    frame_data out;
+    frame_beat out;
     assign out = s5;
 
     wire out_ready;
@@ -285,7 +285,7 @@ module frame_datapath_example
     // Rewrite dest.
     wire [ID_WIDTH - 1:0] dest_current = out_is_first ? out.dest : dest;
 
-    frame_data filtered;
+    frame_beat filtered;
     wire filtered_ready;
 
     frame_filter
