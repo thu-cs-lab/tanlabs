@@ -623,7 +623,7 @@ module tanlabs
     begin
         if (reset_50M)
         begin
-            blink <= 8'b10110111;
+            blink <= 8'h55;
             counter <= 0;
         end
         else
@@ -679,6 +679,8 @@ module tanlabs
         .o(reset_ram)
     );
 
+    localparam RAM_MAX_ADDR = 21'h1fffff;
+
     reg last_valid;
     reg [20:0] ram_addr, last_addr;
     reg [31:0] ram_data_o, last_data;
@@ -702,7 +704,6 @@ module tanlabs
     assign ext_ram_oe_n = ram_we;
     assign ext_ram_we_n = ~ram_we | ram_clk;  // Magic!!!
 
-    localparam ST_INIT = 0;
     localparam ST_WRITE = 1;
     localparam ST_START_READ = 2;
     localparam ST_READ_CHECK = 3;
@@ -747,9 +748,9 @@ module tanlabs
         begin
             state <= ST_WRITE;
             pattern_state <= PATT_0;
-            ram_addr <= 21'h1fffff;
+            ram_addr <= RAM_MAX_ADDR;
             ram_data_o <= 0;
-            ram_we <= 0;
+            ram_we <= 1'b0;
             last_valid <= 1'b0;
             last_addr <= 0;
             last_data <= 0;
@@ -759,7 +760,7 @@ module tanlabs
             case (state)
             ST_WRITE:
             begin
-                if (ram_addr + 1 == 21'h1fffff)
+                if (ram_addr + 1 == RAM_MAX_ADDR)
                 begin
                     state <= ST_START_READ;
                 end
@@ -780,7 +781,7 @@ module tanlabs
                 begin
                     state <= ST_ERROR;
                 end
-                else if (last_valid && last_addr == 21'h1fffff)
+                else if (last_valid && last_addr == RAM_MAX_ADDR)
                 begin
                     state <= ST_NEXT_PATTERN;
                 end
@@ -795,7 +796,7 @@ module tanlabs
             ST_NEXT_PATTERN:
             begin
                 state <= ST_WRITE;
-                ram_addr <= 21'h1fffff;
+                ram_addr <= RAM_MAX_ADDR;
                 case (pattern_state)
                 PATT_0: pattern_state <= PATT_5;
                 PATT_5: pattern_state <= PATT_A;
@@ -817,7 +818,10 @@ module tanlabs
                 
             end
             default:
-                state <= ST_INIT;
+            begin
+                state <= ST_WRITE;
+                ram_addr <= RAM_MAX_ADDR;
+            end
             endcase
         end
     end
