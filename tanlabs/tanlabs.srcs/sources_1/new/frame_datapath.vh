@@ -1,42 +1,32 @@
 // 'w' means wide.
-localparam DATAW_WIDTH = 8 * 48;
+localparam DATAW_WIDTH = 8 * 64;
 
 // README: Your code here.
 
 typedef struct packed
 {
-    logic [(DATAW_WIDTH - 8 * 20 - 8 * 14) - 1:0] payload;
-    logic [31:0] dst;
-    logic [31:0] src;
+    logic [(DATAW_WIDTH - 8 * 4 - 8 * 40 - 8 * 14) - 1:0] p;
     logic [15:0] checksum;
-    logic [7:0] proto;
-    logic [7:0] ttl;
-    logic [15:0] flags;
-    logic [15:0] id;
-    logic [15:0] total_len;
-    logic [7:0] dscp_ecn;
+    logic [7:0] code;
+    logic [7:0] ty;
+} icmp6_hdr;
+
+typedef struct packed
+{
+    icmp6_hdr p;
+    logic [127:0] dst;
+    logic [127:0] src;
+    logic [7:0] hop_limit;
+    logic [7:0] next_hdr;
+    logic [15:0] payload_len;
+    logic [23:0] flow_lo;
     logic [3:0] version;
-    logic [3:0] ihl;
-} ip4_hdr;
+    logic [3:0] flow_hi;
+} ip6_hdr;
 
 typedef struct packed
 {
-    logic [(DATAW_WIDTH - 8 * 28 - 8 * 14) - 1:0] payload;
-    logic [31:0] tpa;
-    logic [47:0] tha;
-    logic [31:0] spa;
-    logic [47:0] sha;
-    logic [15:0] op;
-    logic [47:0] magic;
-} arp_hdr;
-
-typedef struct packed
-{
-    union packed
-    {
-        ip4_hdr ip4;
-        arp_hdr arp;
-    } payload;
+    ip6_hdr ip6;
     logic [15:0] ethertype;
     logic [47:0] src;
     logic [47:0] dst;
@@ -72,5 +62,4 @@ typedef struct packed
 // README: Your code here. You can define some other constants like EtherType.
 localparam ID_CPU = 3'd4;  // The interface ID of CPU is 4.
 
-localparam ETHERTYPE_IP4 = 16'h0008;
 localparam ETHERTYPE_IP6 = 16'hdd86;

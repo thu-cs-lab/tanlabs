@@ -34,8 +34,8 @@ module frame_datapath_example
     frame_beat in;
     wire in_ready;
 
-    // README: Here, we use a width upsizer to change the width to 48 bytes
-    // (MAC 14 + ARP 28 + round up 6) to ensure that L2 (MAC) and L3 (IPv4 or ARP) headers appear
+    // README: Here, we use a width upsizer to change the width to 64 bytes
+    // (MAC 14 + IPv6 40 + round up 10) to ensure that L2 (MAC) and L3 (IPv6) headers appear
     // in one beat (the first beat) facilitating our processing.
     // You can remove this.
     axis_dwidth_converter_up axis_dwidth_converter_up_i(
@@ -125,8 +125,8 @@ module frame_datapath_example
             s2 <= s1;
             if (s1.valid && s1.is_first && !s1.drop && !s1.dont_touch)
             begin
-                // Useless feature 2: Drop IP packets whose TTL values are odd.
-                if (s1.data.ethertype == ETHERTYPE_IP4 && s1.data.payload.ip4.ttl[0] == 1'b1)
+                // Useless feature 2: Drop IPv6 packets whose hop limit values are odd.
+                if (s1.data.ethertype == ETHERTYPE_IP6 && s1.data.ip6.hop_limit[0] == 1'b1)
                 begin
                     s2.drop <= 1'b1;
                 end
@@ -212,10 +212,10 @@ module frame_datapath_example
             s4 <= s3;
             if (s3.valid && s3.is_first && !s3.drop && !s3.dont_touch)
             begin
-                // Useless feature 4: Decrease TTL of IP packets without updating the checksums.
-                if (s3.data.ethertype == ETHERTYPE_IP4)
+                // Useless feature 4: Decrease hop limit of IPv6 packets.
+                if (s3.data.ethertype == ETHERTYPE_IP6)
                 begin
-                    s4.data.payload.ip4.ttl[0] <= s3.data.payload.ip4.ttl[0] - 1;
+                    s4.data.ip6.hop_limit <= s3.data.ip6.hop_limit - 1;
                 end
             end
         end

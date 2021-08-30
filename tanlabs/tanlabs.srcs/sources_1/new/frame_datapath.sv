@@ -33,8 +33,8 @@ module frame_datapath
     frame_beat in;
     wire in_ready;
 
-    // README: Here, we use a width upsizer to change the width to 48 bytes
-    // (MAC 14 + ARP 28 + round up 6) to ensure that L2 (MAC) and L3 (IPv4 or ARP) headers appear
+    // README: Here, we use a width upsizer to change the width to 64 bytes
+    // (MAC 14 + IPv6 40 + round up 10) to ensure that L2 (MAC) and L3 (IPv6) headers appear
     // in one beat (the first beat) facilitating our processing.
     // You can remove this.
     axis_dwidth_converter_up axis_dwidth_converter_up_i(

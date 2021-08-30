@@ -10,9 +10,12 @@
 
 from scapy import *
 from scapy.utils import *
+from scapy.utils6 import *
 from scapy.layers.l2 import *
 from scapy.layers.inet import *
+from scapy.layers.inet6 import *
 from scapy.layers.rip import *
+from scapy.contrib.ripng import *
 import sys
 import struct
 
@@ -35,20 +38,21 @@ if SEND_FRAMES:
 
 # You may need to change these IP addresses.
 # The following configuration assumes that
-#   1. The IP address of Interface 0 of the router is 10.0.0.1/24.
-#   2. The IP address of Interface 1 of the router is 10.0.1.1/24.
-#   3. The IP address of Interface 2 of the router is 10.0.2.1/24.
-#   4. The IP address of Interface 3 of the router is 10.0.3.1/24.
-#   5. There exists a default route, and its next hop is Interface 3, 10.0.3.2.
-IP_TESTER0 = '10.0.0.2'
-IP_TESTER1 = '10.0.1.2'
-IP_DUT0 = '10.0.0.1'  # Device under test.
-IP_DUT3 = '10.0.3.1'
-IP_DEFAULT_ROUTE = '10.0.3.2'  # The IP address of the default route.
-IP_TEST_DST = '192.168.1.1'  # Forward destination. Route should exist.
-IP_TEST_DST_NO_MAC = '10.0.0.100'  # Forward destination. Route should exist. MAC address should not exist.
-IP_TEST_DST_NO_ROUTE = '254.254.254.254'  # Forward destination. Route should not exist.
-IP_RIP = '224.0.0.9'  # RIP multicast group address.
+#   1. The IP address of Interface 0 of the router is prefix:0::1/64.
+#   2. The IP address of Interface 1 of the router is prefix:1::1/64.
+#   3. The IP address of Interface 2 of the router is prefix:2::1/64.
+#   4. The IP address of Interface 3 of the router is prefix:3::1/64.
+#   5. There exists a 2000::/3 route (not default route), and its next hop is Interface 3, prefix:3::2.
+IP_PREFIX = '2a0e:aa06:497:'
+IP_TESTER0 = IP_PREFIX + '0::2'
+IP_TESTER1 = IP_PREFIX + '1::2'
+IP_DUT0 = IP_PREFIX + '0::1'  # Device under test.
+IP_DUT3 = IP_PREFIX + '3::1'
+IP_DEFAULT_ROUTE = IP_PREFIX + '3::2'  # The IP address of the default route.
+IP_TEST_DST = '2402:f000::1'  # Forward destination. Route should exist.
+IP_TEST_DST_NO_MAC = IP_PREFIX + '0::100'  # Forward destination. Route should exist. MAC address should not exist.
+IP_TEST_DST_NO_ROUTE = 'fd00::1'  # Forward destination. Route should not exist.
+IP_RIP = 'ff02::9'  # RIP multicast group address.
 
 # frames.txt format:
 # <Ingress Interface ID> <Frame Length> <Frame Data...>
@@ -71,101 +75,87 @@ def write_frame(iface, f):
     sendp(f, iface='tanlabs-veth{}'.format(iface))
 
 
-# ARP request test.
-write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_BROADCAST) /
-            ARP(op='who-has', hwsrc=MAC_TESTER0, psrc=IP_TESTER0, hwdst=MAC_BROADCAST, pdst=IP_DUT0))
+def getnsma(a):
+  return inet_ntop(socket.AF_INET6, in6_getnsma(inet_pton(socket.AF_INET6, a)))
 
-# ARP reply test.
+
+# Neighbor Solicitation test.
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
+            ICMPv6ND_NS(tgt=IP_DUT0) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Advertisement test.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            ARP(op='is-at', hwsrc=MAC_TESTER0, psrc=IP_TESTER0, hwdst=MAC_DUT0, pdst=IP_DUT0))
+            IPv6(src=IP_TESTER0, dst=IP_DUT0) /
+            ICMPv6ND_NA(R=0, S=1, tgt=IP_TESTER0) / ICMPv6NDOptDstLLAddr(lladdr=MAC_TESTER0))
 
-# Fill the ARP cache entry of the default route.
-write_frame(IFACE_DEFAULT_ROUTE, Ether(src=MAC_DEFAULT_ROUTE, dst=MAC_BROADCAST) /
-            ARP(op='who-has', hwsrc=MAC_DEFAULT_ROUTE, psrc=IP_DEFAULT_ROUTE, hwdst=MAC_BROADCAST, pdst=IP_DUT3))
+# Fill the MAC cache entry of the default route.
+write_frame(IFACE_DEFAULT_ROUTE, Ether(src=MAC_DEFAULT_ROUTE) /
+            IPv6(src=IP_DEFAULT_ROUTE, dst=getnsma(IP_DUT3)) /
+            ICMPv6ND_NS(tgt=IP_DUT3) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_DEFAULT_ROUTE))
 
 # Simple IP forwarding test.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IP(src=IP_TESTER0, dst=IP_TEST_DST) /
+            IPv6(src=IP_TESTER0, dst=IP_TEST_DST) /
             UDP(sport=7, dport=7) / b'hello, 00001')
 
 # Packet to the router itself, should not be forwarded.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IP(src=IP_TESTER0, dst=IP_DUT0) /
+            IPv6(src=IP_TESTER0, dst=IP_DUT0) /
             UDP(sport=7, dport=7) / b'hello, 00002')
 
 # Simple IP forwarding test (no MAC).
 write_frame(1, Ether(src=MAC_TESTER1, dst=MAC_DUT1) /
-            IP(src=IP_TESTER1, dst=IP_TEST_DST_NO_MAC) /
+            IPv6(src=IP_TESTER1, dst=IP_TEST_DST_NO_MAC) /
             UDP(sport=7, dport=7) / b'hello, 00003')
 
 # Simple IP forwarding test (no route).
 write_frame(1, Ether(src=MAC_TESTER1, dst=MAC_DUT1) /
-            IP(src=IP_TESTER1, dst=IP_TEST_DST_NO_ROUTE) /
+            IPv6(src=IP_TESTER1, dst=IP_TEST_DST_NO_ROUTE) /
             UDP(sport=7, dport=7) / b'hello, 00004')
 
-# TTL=2 test.
+# hop-limit=2 test.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IP(src=IP_TESTER0, dst=IP_TEST_DST, ttl=2) /
+            IPv6(src=IP_TESTER0, dst=IP_TEST_DST, hlim=2) /
             UDP(sport=7, dport=7) / b'hello, 00005')
 
-# TTL=1 test.
+# hop-limit=1 test.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IP(src=IP_TESTER0, dst=IP_TEST_DST, ttl=1) /
+            IPv6(src=IP_TESTER0, dst=IP_TEST_DST, hlim=1) /
             UDP(sport=7, dport=7) / b'hello, 00006')
 
-# TTL=0 test.
+# hop-limit=0 test.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IP(src=IP_TESTER0, dst=IP_TEST_DST, ttl=0) /
+            IPv6(src=IP_TESTER0, dst=IP_TEST_DST, hlim=0) /
             UDP(sport=7, dport=7) / b'hello, 00007')
 
-# IP packet with wrong checksum test.
+# IP packet with hop-limit=1. Route does not exist.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IP(src=IP_TESTER0, dst=IP_TEST_DST, chksum=0x1234) /
+            IPv6(src=IP_TESTER0, dst=IP_TEST_DST_NO_ROUTE, hlim=1) /
             UDP(sport=7, dport=7) / b'hello, 00008')
 
-# IP packet with 0xfeff checksum test.
-write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IP(src=IP_TESTER0, dst=IP_TEST_DST, id=0xb01a, ttl=64) /
-            UDP(sport=7, dport=7) / b'hello, 00009')
-
-# IP packet with 0x0000 checksum test.
-write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IP(src=IP_TESTER0, dst=IP_TEST_DST, id=0xaf1a, ttl=64) /
-            UDP(sport=7, dport=7) / b'hello, 00010')
-
-# IP packet with 0xffff checksum test.
-write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IP(src=IP_TESTER0, dst=IP_TEST_DST, id=0xaf1a, ttl=64, chksum=0xffff) /
-            UDP(sport=7, dport=7) / b'hello, 00011')
-
-# IP packet with TTL=1 and wrong checksum. Route does not exist.
-write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IP(src=IP_TESTER0, dst=IP_TEST_DST_NO_ROUTE, ttl=1, chksum=0x1234) /
-            UDP(sport=7, dport=7) / b'hello, 00012')
-
-# IP packet with TTL=1. Route does not exist.
-write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IP(src=IP_TESTER0, dst=IP_TEST_DST_NO_ROUTE, ttl=1) /
-            UDP(sport=7, dport=7) / b'hello, 00013')
-
 # L2 garbage test.
-write_frame(0, Ether(b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00014'))
+write_frame(0, Ether(b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00009'))
 
 # L3 garbage test (IPv4).
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0, type='IPv4') /
-            b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00015')
+            b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00010')
 
 # L3 garbage test (ARP).
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0, type='ARP') /
-            b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00016')
+            b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00011')
+
+# L3 garbage test (IPv6).
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0, type='IPv6') /
+            b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00012')
 
 # RIP test.
 write_frame(1, Ether(src=MAC_TESTER1) /
-            IP(src=IP_TESTER1, dst=IP_RIP, ttl=1) /
+            IPv6(src=IP_TESTER1, dst=IP_RIP, hlim=1) /
             UDP() /
-            RIP(version=2) /
-            RIPEntry(addr='192.168.1.0', mask='255.255.255.0') /
-            RIPEntry(addr='166.111.0.0', mask='255.255.0.0'))
+            RIPng() /
+            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
+            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32))
 
 # You can construct more frames to test your datapath.
 
