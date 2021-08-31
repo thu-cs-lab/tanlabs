@@ -1,19 +1,11 @@
 // 'w' means wide.
-localparam DATAW_WIDTH = 8 * 64;
+localparam DATAW_WIDTH = 8 * 56;
 
 // README: Your code here.
 
 typedef struct packed
 {
-    logic [(DATAW_WIDTH - 8 * 4 - 8 * 40 - 8 * 14) - 1:0] p;
-    logic [15:0] checksum;
-    logic [7:0] code;
-    logic [7:0] ty;
-} icmp6_hdr;
-
-typedef struct packed
-{
-    icmp6_hdr p;
+    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14) - 1:0] p;
     logic [127:0] dst;
     logic [127:0] src;
     logic [7:0] hop_limit;
