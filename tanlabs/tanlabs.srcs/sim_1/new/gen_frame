@@ -28,7 +28,7 @@ MAC_BROADCAST = 'ff:ff:ff:ff:ff:ff'
 MAC_DUT0 = MAC_BROADCAST
 MAC_DUT1 = MAC_BROADCAST
 MAC_TESTER0 = '54:45:53:54:5f:30'
-MAC_TESTER1 = '54:45:53:54:5f:32'
+MAC_TESTER1 = '54:45:53:54:5f:31'
 MAC_OTHERS = '40:41:42:43:44:45'
 IFACE_DEFAULT_ROUTE = 3
 MAC_DEFAULT_ROUTE = '54:45:53:54:5f:33'
@@ -48,8 +48,10 @@ IP_PREFIX = '2a0e:aa06:497:'
 IP_TESTER0 = IP_PREFIX + '0::2'
 IP_TESTER1 = IP_PREFIX + '1::2'
 IP_DUT0 = IP_PREFIX + '0::1'  # Device under test.
+IP_DUT1 = IP_PREFIX + '1::1'
 IP_DUT3 = IP_PREFIX + '3::1'
 IP_DEFAULT_ROUTE = IP_PREFIX + '3::2'  # The IP address of the default route.
+IP_TEST_NDP = IP_PREFIX + '0:8000::1'
 IP_TEST_DST = '2402:f000::1'  # Forward destination. Route should exist.
 IP_TEST_DST_NO_MAC = IP_PREFIX + '0::100'  # Forward destination. Route should exist. MAC address should not exist.
 IP_TEST_DST_NO_ROUTE = 'fd00::1'  # Forward destination. Route should not exist.
@@ -85,15 +87,66 @@ write_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
             ICMPv6ND_NS(tgt=IP_DUT0) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
 
+# Neighbor Solicitation test (target address is not mine).
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=IP_TESTER0, dst=getnsma(IP_TEST_NDP)) /
+            ICMPv6ND_NS(tgt=IP_TEST_NDP) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Solicitation test (DAD).
+# Optional, you do not have to process this packet.
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src='::', dst=getnsma(IP_DUT0)) /
+            ICMPv6ND_NS(tgt=IP_DUT0))
+
+# Neighbor Solicitation test (unicast with sender's MAC).
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
+            IPv6(src=IP_TESTER0, dst=IP_DUT0) /
+            ICMPv6ND_NS(tgt=IP_DUT0) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Solicitation test (unicast without sender's MAC).
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
+            IPv6(src=IP_TESTER0, dst=IP_DUT0) /
+            ICMPv6ND_NS(tgt=IP_DUT0))
+
+# Neighbor Solicitation test (wrong payload length).
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
+            IPv6(src=IP_TESTER0, dst=IP_DUT0, plen=32) /
+            ICMPv6ND_NS(tgt=IP_DUT0))
+
 # Neighbor Advertisement test.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
             IPv6(src=IP_TESTER0, dst=IP_DUT0) /
-            ICMPv6ND_NA(R=0, S=1, tgt=IP_TESTER0) / ICMPv6NDOptDstLLAddr(lladdr=MAC_TESTER0))
+            ICMPv6ND_NA(R=0, S=1, O=1, tgt=IP_TESTER0) / ICMPv6NDOptDstLLAddr(lladdr=MAC_TESTER0))
+
+# Fill the neighbor cache entry of TESTER1.
+write_frame(1, Ether(src=MAC_TESTER1, dst=MAC_DUT1) /
+            IPv6(src=IP_TESTER1, dst=IP_DUT1) /
+            ICMPv6ND_NA(R=0, S=1, O=1, tgt=IP_TESTER1) / ICMPv6NDOptDstLLAddr(lladdr=MAC_TESTER1))
 
 # Fill the neighbor cache entry of the default route.
 write_frame(IFACE_DEFAULT_ROUTE, Ether(src=MAC_DEFAULT_ROUTE) /
             IPv6(src=IP_DEFAULT_ROUTE, dst=getnsma(IP_DUT3)) /
             ICMPv6ND_NS(tgt=IP_DUT3) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_DEFAULT_ROUTE))
+
+# Neighbor Solicitation test (bad hop-limit).
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0), hlim=64) /
+            ICMPv6ND_NS(tgt=IP_DUT0) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Solicitation test (bad ICMP code).
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
+            ICMPv6ND_NS(code=42, tgt=IP_DUT0) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Solicitation test (bad checksum).
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
+            ICMPv6ND_NS(tgt=IP_DUT0, cksum=0x2222) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Solicitation test (bad option).
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
+            ICMPv6ND_NS(tgt=IP_DUT0) / b'\x01\x01')
 
 # Simple IP forwarding test.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
@@ -166,7 +219,26 @@ write_frame(1, Ether(src=MAC_TESTER1) /
             UDP() /
             RIPng() /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
-            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32))
+            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
+            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
+
+# RIP test (wrong checksum).
+write_frame(1, Ether(src=MAC_TESTER1) /
+            IPv6(src=IP_TESTER1, dst=IP_RIP, hlim=1) /
+            UDP(chksum=0x2222) /
+            RIPng() /
+            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
+            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
+            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
+
+# RIP test (no checksum, illegal in IPv6).
+write_frame(1, Ether(src=MAC_TESTER1) /
+            IPv6(src=IP_TESTER1, dst=IP_RIP, hlim=1) /
+            UDP(chksum=0x0000) /
+            RIPng() /
+            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
+            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
+            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
 
 # You can construct more frames to test your datapath.
 
