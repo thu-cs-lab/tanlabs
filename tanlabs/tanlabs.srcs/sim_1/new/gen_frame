@@ -87,17 +87,6 @@ write_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
             ICMPv6ND_NS(tgt=IP_DUT0) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
 
-# Neighbor Solicitation test (target address is not mine).
-write_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=IP_TESTER0, dst=getnsma(IP_TEST_NDP)) /
-            ICMPv6ND_NS(tgt=IP_TEST_NDP) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
-
-# Neighbor Solicitation test (DAD).
-# Optional, you do not have to process this packet.
-write_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src='::', dst=getnsma(IP_DUT0)) /
-            ICMPv6ND_NS(tgt=IP_DUT0))
-
 # Neighbor Solicitation test (unicast with sender's MAC).
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
             IPv6(src=IP_TESTER0, dst=IP_DUT0) /
@@ -108,15 +97,15 @@ write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
             IPv6(src=IP_TESTER0, dst=IP_DUT0) /
             ICMPv6ND_NS(tgt=IP_DUT0))
 
-# Neighbor Solicitation test (wrong payload length).
-write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
-            IPv6(src=IP_TESTER0, dst=IP_DUT0, plen=32) /
-            ICMPv6ND_NS(tgt=IP_DUT0))
-
 # Neighbor Advertisement test.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
             IPv6(src=IP_TESTER0, dst=IP_DUT0) /
             ICMPv6ND_NA(R=0, S=1, O=1, tgt=IP_TESTER0) / ICMPv6NDOptDstLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Advertisement test (without sender's MAC).
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
+            IPv6(src=IP_TESTER0, dst=IP_DUT0) /
+            ICMPv6ND_NA(R=0, S=1, O=0, tgt=IP_TESTER0))
 
 # Fill the neighbor cache entry of TESTER1.
 write_frame(1, Ether(src=MAC_TESTER1, dst=MAC_DUT1) /
@@ -127,6 +116,17 @@ write_frame(1, Ether(src=MAC_TESTER1, dst=MAC_DUT1) /
 write_frame(IFACE_DEFAULT_ROUTE, Ether(src=MAC_DEFAULT_ROUTE) /
             IPv6(src=IP_DEFAULT_ROUTE, dst=getnsma(IP_DUT3)) /
             ICMPv6ND_NS(tgt=IP_DUT3) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_DEFAULT_ROUTE))
+
+# Neighbor Solicitation test (DAD).
+# Optional, you do not have to process DAD packets.
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src='::', dst=getnsma(IP_DUT0)) /
+            ICMPv6ND_NS(tgt=IP_DUT0))
+
+# Neighbor Advertisement test (DAD).
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=IP_TESTER0, dst='ff02::1') /
+            ICMPv6ND_NA(R=0, S=0, O=0, tgt=IP_TESTER0) / ICMPv6NDOptDstLLAddr(lladdr=MAC_TESTER0))
 
 # Neighbor Solicitation test (bad hop-limit).
 write_frame(0, Ether(src=MAC_TESTER0) /
@@ -143,10 +143,35 @@ write_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
             ICMPv6ND_NS(tgt=IP_DUT0, cksum=0x2222) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
 
+# Neighbor Solicitation test (wrong payload length).
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
+            IPv6(src=IP_TESTER0, dst=IP_DUT0, plen=32) /
+            ICMPv6ND_NS(tgt=IP_DUT0))
+
 # Neighbor Solicitation test (bad option).
 write_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
-            ICMPv6ND_NS(tgt=IP_DUT0) / b'\x01\x01')
+            ICMPv6ND_NS(tgt=IP_DUT0) / b'\x01\x00\x01\x00\x01\x00\x01\x00')
+
+# Neighbor Solicitation test (target address is not mine).
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=IP_TESTER0, dst=getnsma(IP_TEST_NDP)) /
+            ICMPv6ND_NS(tgt=IP_TEST_NDP) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Solicitation test (DAD, but unicast).
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
+            IPv6(src='::', dst=IP_DUT0) /
+            ICMPv6ND_NS(tgt=IP_DUT0))
+
+# Neighbor Solicitation test (DAD, but with sender's MAC).
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src='::', dst=getnsma(IP_DUT0)) /
+            ICMPv6ND_NS(tgt=IP_DUT0) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Advertisement test (DAD, but S=1).
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=IP_TESTER0, dst='ff02::1') /
+            ICMPv6ND_NA(R=0, S=1, O=0, tgt=IP_TESTER0) / ICMPv6NDOptDstLLAddr(lladdr=MAC_TESTER0))
 
 # Simple IP forwarding test.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
@@ -193,7 +218,7 @@ write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
             IPv6(src=IP_TESTER0, dst=IP_TEST_DST, hlim=0) /
             UDP(sport=7, dport=7) / b'hello, 00009')
 
-# IP packet with hop-limit=1. Route does not exist.
+# IP packet with hop-limit=1. Also, route does not exist.
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
             IPv6(src=IP_TESTER0, dst=IP_TEST_DST_NO_ROUTE, hlim=1) /
             UDP(sport=7, dport=7) / b'hello, 00010')
