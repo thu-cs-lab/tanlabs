@@ -3,28 +3,33 @@
 NS=tanlabs-test
 OUT_PREFIX=tanlabs-
 
+IP_PREFIX=2a0e:aa06:497:
+
 ip netns del ${NS}
 ip netns add ${NS}
+ip netns exec ${NS} bash -c "echo 1 > /proc/sys/net/ipv6/conf/all/forwarding"
 ip netns exec ${NS} ip link set lo up
 for ((i = 0; i < 4; i++)) do
     ip link add veth${i} type veth peer name ${OUT_PREFIX}veth${i}
     ip link set veth${i} netns ${NS}
     ip netns exec ${NS} ip link set veth${i} up
     ip netns exec ${NS} ip link set veth${i} addr 54:57:44:32:5f:3${i}
-    ip netns exec ${NS} ip addr add 10.0.${i}.1/24 dev veth${i}
+    ip netns exec ${NS} ip addr add ${IP_PREFIX}${i}::1/64 dev veth${i}
     ip link set ${OUT_PREFIX}veth${i} up
     ip link set ${OUT_PREFIX}veth${i} addr 54:45:53:54:5f:3${i}
-    ip addr add 10.0.${i}.2/24 dev ${OUT_PREFIX}veth${i}
+    ip addr add ${IP_PREFIX}${i}::2/64 dev ${OUT_PREFIX}veth${i}
 done
 
-ip netns exec ${NS} ip route add 192.168.0.0/16 via 10.0.3.2 dev veth3
+ip netns exec ${NS} ip route add 2000::/3 via ${IP_PREFIX}3::2 dev veth3
 
 echo In namespace ${NS}:
+echo -n net.ipv6.conf.all.forwarding=
+ip netns exec ${NS} cat /proc/sys/net/ipv6/conf/all/forwarding
 ip netns exec ${NS} ip addr
-ip netns exec ${NS} ip route
+ip netns exec ${NS} ip -6 route
 echo ==========================
 echo
 echo Outside:
 ip addr show type veth
-ip route | grep ${OUT_PREFIX}
+ip -6 route | grep ${OUT_PREFIX}
 echo ==========================
