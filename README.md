@@ -69,7 +69,8 @@ set_property CONFIG.SIMULATION_MODE {0} [get_ips axi_ethernet_0 axi_ethernet_nos
 1. 执行`sudo ./create_ns`；
 2. 执行`sudo ip netns exec tanlabs-test wireshark &`以在`tanlabs-test`网络命名空间中打开Wireshark，然后选中veth0、veth1、veth2以及veth3并开始抓包；
 3. 执行`sudo ./gen_frame send`；
-4. 停止Wireshark抓包，并保存结果至`refout_frames.pcapng`。
+4. 等待3.5秒；
+5. 停止Wireshark抓包，并保存结果至`refout_frames.pcapng`。
 
 关于`firmware`，请阅读`firmware/README.md`。
 
