@@ -1,6 +1,12 @@
 #!/bin/bash
+set -e
 
-IFACE=enp3s0f3
+if [ -z "${1}" ]; then
+    echo Please specify the main network interface connected to the device.
+    exit 1
+fi
+
+IFACE=${1}
 BASE_VLAN=256
 CTRL_VLAN=$((${BASE_VLAN} + 4))
 IFACE_PREFIX=tanlabs-vlan

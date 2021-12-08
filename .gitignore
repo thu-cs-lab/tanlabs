@@ -9,6 +9,7 @@
 *.sim/
 *.ip_user_files/
 *.runs/
+*.gen/
 *.jou
 *.log
 *.str
