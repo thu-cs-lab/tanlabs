@@ -20,9 +20,11 @@ module ingress_wrapper
     output frame_data out,
     input out_ready,
 
-    // TODO: control signals
+    // control signals
     input interface_config_t interface_config,
-    output interface_recv_state_t interface_state
+    output interface_recv_state_t interface_state,
+
+    input wire [63:0] ticks
 );
 
     frame_data in;
@@ -47,12 +49,11 @@ module ingress_wrapper
         .m_axis_tuser(in.user)
     );
 
-    // TODO: check dst MAC and dst IP.
+    // Check dst MAC and dst IP.
     wire to_data_plane =
         in.data.dst == interface_config.mac
-        && in.data.ethertype == ETHERTYPE_IP4
-        && in.data.payload.ip4.proto == PROTO_TEST
-        && in.data.payload.ip4.payload.udp.payload == UDP_PAYLOAD_MAGIC; 
+        && in.data.ethertype == ETHERTYPE_IP6
+        && in.data.payload.ip6.proto == PROTO_TEST;
 
     wire new_dest = to_data_plane;
     reg saved_dest;
@@ -131,6 +132,18 @@ module ingress_wrapper
 //    state_t state;
     assign dp_ready = 1'b1;
 
+    function [DATA_WIDTH / 8 - 1:0] len2keep;
+        input [15:0] len;
+        reg [15:0] i;
+    begin
+        len2keep = 0;
+        for (i = 0; i < DATA_WIDTH / 8; i = i + 1)
+        begin
+            len2keep[i] = i < len;
+        end
+    end
+    endfunction
+
     function [15:0] keep2len;
         input [DATA_WIDTH / 8 - 1:0] keep;
         reg [15:0] i; 
@@ -146,48 +159,184 @@ module ingress_wrapper
     end
     endfunction
 
-    reg [63:0] nbytes;
+    wire [63:0] pattern;
+    wire [63:0] set_pattern;
+    wire set_lfsr;
+    lfsr lfsr_i(
+        .clk(eth_clk),
+        .reset(reset),
+
+        .set(set_lfsr),
+        .i(set_pattern),
+
+        .o(pattern)
+    );
+
+    typedef enum
+    {
+        ST_RECV_HEADER,
+        ST_RECV_FIRST_PAYLOAD,
+        ST_RECV_PAYLOAD
+    } state_t;
+
+    state_t state;
+
+    reg [63:0] nbytes, nbytes_l3;
     wire [63:0] current_nbytes = nbytes + keep2len(dp.keep);
     reg error;
-    wire current_error = error | |dp.user;
+    reg current_error;
+    reg [63:0] latency;
+    reg [15:0] remaining_bytes;
+    wire [15:0] remaining_bytes_mux = state == ST_RECV_HEADER ?
+        {<<8{dp.data.payload.ip6.payload_len}} + 54
+        : remaining_bytes;
+    reg expected_last;
+    reg [DATA_WIDTH / 8 - 1:0] expected_keep;
+
+    integer i;
+    reg [DATA_WIDTH - 1:0] expected_keep_bit;
+    always @ (*)
+    begin
+        for (i = 0; i < DATA_WIDTH; i = i + 1)
+        begin
+            expected_keep_bit[i] = expected_keep[i / 8];
+        end
+    end
+
+    wire [63:0] expected_pattern64 = state == ST_RECV_FIRST_PAYLOAD : dp.data[63:0] ? pattern;
+    wire [DATA_WIDTH - 1:0] expected_pattern = expand_pattern(expected_pattern64);
+    wire pattern_mismatch = |((dp.data ^ expected_pattern) & expected_keep_bit);
+
+    assign set_pattern = dp.data[63:0];
+    assign set_lfsr = dp.valid && state == ST_RECV_FIRST_PAYLOAD;
+
+    always @ (*)
+    begin
+        current_error = error | |dp.user;
+
+        if (state == ST_RECV_HEADER)
+        begin
+            if (dp.data.payload.ip6.version != 4'd6
+                || dp.data.payload.ip6.flow_hi != 4'd0)
+            begin
+                current_error = 1'b1;
+            end
+
+            // Report an error when the frame is shorter than expected.
+            if (remaining_bytes_mux <= DATA_WIDTH / 8)
+            begin
+                current_error |= !dp.keep[remaining_bytes_mux - 1];
+            end
+            else
+            begin
+                current_error |= dp.last;
+            end
+        end
+        else
+        begin
+            current_error |= pattern_mismatch;
+
+            // Report an error when the frame is shorter than expected.
+            if (!expected_last && dp.last)
+            begin
+                current_error = 1'b1;
+            end
+            if ((expected_keep & dp.keep) != expected_keep)
+            begin
+                current_error = 1'b1;
+            end
+        end
+    end
 
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
         begin
-//            state <= ST_;
+            state <= ST_RECV_HEADER;
             interface_state <= 0;
             nbytes <= 0;
             error <= 1'b0;
+            latency <= 0;
+            remaining_bytes <= 0;
+            expected_last <= 1'b0;
+            expected_keep <= 0;
         end
-        else if (dp.valid)
+        else
         begin
-            if (dp.last)
+            if (dp.valid)
             begin
-                if (current_error)
+                case (state)
+                ST_RECV_HEADER:
                 begin
-                    interface_state.nerror <= interface_state.nerror + 1;
+                    latency <= ticks - {dp.data.payload.ip6.flow_lo[15:8],
+                                        dp.data.payload.ip6.flow_lo[23:16],
+                                        dp.data.payload.ip6.payload[7:0],
+                                        dp.data.payload.ip6.flow_lo[7:0]};
+                    nbytes_l3 <= remaining_bytes_mux;
+                    state <= ST_RECV_FIRST_PAYLOAD;
+                end
+                ST_RECV_FIRST_PAYLOAD:
+                begin
+                    state <= ST_RECV_PAYLOAD;
+                end
+                ST_RECV_PAYLOAD:
+                begin
+                end
+                default:
+                begin
+                    state <= ST_RECV_HEADER;
+                end
+                endcase
+
+                if (remaining_bytes_mux <= DATA_WIDTH / 8)
+                begin
+                    remaining_bytes <= 0;
+                    expected_last <= 1'b1;
+                    expected_keep <= 0;
+                end
+                else if (remaining_bytes_mux <= DATA_WIDTH / 8 * 2)
+                begin
+                    remaining_bytes <= remaining_bytes_mux - DATA_WIDTH / 8;
+                    expected_last <= 1'b1;
+                    expected_keep <= len2keep(remaining_bytes_mux - DATA_WIDTH / 8);
                 end
                 else
                 begin
-                    interface_state.nbytes <= interface_state.nbytes + current_nbytes;
-                    interface_state.npackets <= interface_state.npackets + 1;
+                    remaining_bytes <= remaining_bytes_mux - DATA_WIDTH / 8;
+                    expected_last <= 1'b0;
+                    expected_keep <= {(DATA_WIDTH / 8){1'b1}};
                 end
 
-                nbytes <= 0;
-                error <= 1'b0;
+                if (dp.last)
+                begin
+                    if (current_error)
+                    begin
+                        interface_state.nerror <= interface_state.nerror + 1;
+                    end
+                    else
+                    begin
+                        interface_state.nbytes <= interface_state.nbytes + current_nbytes;
+                        interface_state.nbytes_l3 <= interface_state.nbytes_l3 + nbytes_l3;
+                        interface_state.npackets <= interface_state.npackets + 1;
+                        interface_state.latency <= latency;
+                    end
+
+                    nbytes <= 0;
+                    error <= 1'b0;
+
+                    state <= ST_RECV_HEADER;
+                end
+                else
+                begin
+                    nbytes <= current_nbytes;
+                    error <= current_error;
+                end
             end
-            else
+
+            if (interface_config.reset_counters)
             begin
-                nbytes <= current_nbytes;
-                error <= current_error;
+                interface_state <= 0;
             end
-//            case (state)
-//            default:
-//            begin
-//                state <= ST_;
-//            end
-//            endcase
         end
     end
 endmodule

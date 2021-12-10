@@ -445,7 +445,9 @@ module tanlabs(
                 .out_ready(cp_rx_ready[i]),
 
                 .interface_config(config_reg.conf[i]),
-                .interface_state(state_reg.recv[i])
+                .interface_state(state_reg.recv[i]),
+
+                .ticks(ticks)
             );
 
             frame_data gen;
@@ -464,7 +466,10 @@ module tanlabs(
                 .out_ready(gen_ready),
 
                 .interface_config(config_reg.conf[i]),
-                .interface_state(state_reg.send[i])
+                .interface_state(state_reg.send[i]),
+
+                .random(random),
+                .ticks(ticks)
             );
 
             egress_wrapper
@@ -585,7 +590,9 @@ module tanlabs(
         .out_ready(ctrl_tx_ready),
 
         .config_reg(config_reg),
-        .state_reg(state_reg)
+        .state_reg(state_reg),
+
+        .ticks(ticks)
     );
 
 //    wire [7:0] debug_led;

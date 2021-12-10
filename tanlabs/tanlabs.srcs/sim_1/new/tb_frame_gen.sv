@@ -35,13 +35,39 @@ module tb_frame_gen
         interface_config.enable = 1'b1;
         interface_config.mac = MY_MAC;
         interface_config.mac_dst = MY_MAC + 2;
-        interface_config.ip_src = MY_IP;
-        interface_config.ip_dst = MY_IP + 2;
+        interface_config.ip_src = 128'h01000000000000000000970406aa0e2a;
+        interface_config.ip_dst = 128'h01000000000000000100970406aa0e2a;
         interface_config.packet_len = 46 + 14;
-        interface_config.gap_len = 0;
+        interface_config.gap_len = 8 + 4 + 12;  // preamble, FCS, inter-frame gap
     end
 
-    frame_gen dut(
+    wire [63:0] random;
+    lfsr lfsr_i(
+        .clk(clk_125M),
+        .reset(reset),
+
+        .o(random)
+    );
+
+    reg [63:0] ticks;
+    always @ (posedge clk_125M or posedge reset)
+    begin
+        if (reset)
+        begin
+            ticks <= 0;
+        end
+        else
+        begin
+            ticks <= ticks + 1;
+        end
+    end
+
+    frame_gen
+    #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .ID_WIDTH(ID_WIDTH)
+    )
+    dut(
         .eth_clk(clk_125M),
         .reset(reset),
 
@@ -49,7 +75,10 @@ module tb_frame_gen
         .out_ready(out_ready),
 
         .interface_config(interface_config),
-        .interface_state(interface_state)
+        .interface_state(interface_state),
+
+        .random(random),
+        .ticks(ticks)
     );
 
     axis_receiver

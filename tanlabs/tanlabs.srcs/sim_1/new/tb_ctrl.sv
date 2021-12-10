@@ -51,7 +51,25 @@ module tb_ctrl
         .m_ready(in_ready)
     );
 
-    ctrl dut(
+    reg [63:0] ticks;
+    always @ (posedge clk_125M or posedge reset)
+    begin
+        if (reset)
+        begin
+            ticks <= 0;
+        end
+        else
+        begin
+            ticks <= ticks + 1;
+        end
+    end
+
+    ctrl
+    #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .ID_WIDTH(ID_WIDTH)
+    )
+    dut(
         .eth_clk(clk_125M),
         .reset(reset),
 
@@ -62,7 +80,9 @@ module tb_ctrl
         .out_ready(out_ready),
 
         .config_reg(config_reg),
-        .state_reg(state_reg)
+        .state_reg(state_reg),
+
+        .ticks(ticks)
     );
 
     axis_receiver

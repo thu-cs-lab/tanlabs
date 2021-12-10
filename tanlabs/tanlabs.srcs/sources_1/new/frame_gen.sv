@@ -15,12 +15,15 @@ module frame_gen
 
     // control signals
     input interface_config_t interface_config,
-    output interface_send_state_t interface_state
+    output interface_send_state_t interface_state,
+
+    input [63:0] random,
+    input [63:0] ticks
 );
 
     function [DATA_WIDTH / 8 - 1:0] len2keep;
         input [15:0] len;
-        reg [15:0] i; 
+        reg [15:0] i;
     begin
         len2keep = 0;
         for (i = 0; i < DATA_WIDTH / 8; i = i + 1)
@@ -60,7 +63,6 @@ module frame_gen
             begin
                 if (out_ready || !out.valid)
                 begin
-                    // TODO: gap counter
                     if (out.valid)
                     begin
                         out.valid <= 1'b0;
@@ -73,17 +75,16 @@ module frame_gen
                         out.valid <= 1'b1;
                         out.data.dst <= interface_config.mac_dst;
                         out.data.src <= interface_config.mac;
-                        out.data.ethertype <= ETHERTYPE_IP4;
-                        out.data.payload.ip4.version <= 4'd4;
-                        out.data.payload.ip4.ihl <= 4'd5;
-                        out.data.payload.ip4.total_len <= interface_config.packet_len - 14;
-                        out.data.payload.ip4.ttl <= 8'd64;
-                        out.data.payload.ip4.id <= 16'h55aa;  // TODO!
-                        out.data.payload.ip4.proto <= PROTO_TEST;
-                        out.data.payload.ip4.checksum <= 0;  // TODO!
-                        out.data.payload.ip4.src <= interface_config.ip_src;
-                        out.data.payload.ip4.dst <= interface_config.ip_dst;
-                        out.data.payload.ip4.payload = 1;  // TODO!
+                        out.data.ethertype <= ETHERTYPE_IP6;
+                        out.data.payload.ip6.version <= 4'd6;
+                        out.data.payload.ip6.flow_hi <= 4'd0;
+                        out.data.payload.ip6.flow_lo <= {ticks[23:16], ticks[31:24], ticks[7:0]};
+                        out.data.payload.ip6.payload_len <= {<<8{16'(interface_config.packet_len - 54)}};
+                        out.data.payload.ip6.next_hdr <= PROTO_TEST;
+                        out.data.payload.ip6.hop_limit <= 8'd64;
+                        out.data.payload.ip6.src <= interface_config.ip_src;
+                        out.data.payload.ip6.dst <= interface_config.ip_dst;
+                        out.data.payload.ip6.payload <= {random[7:0], ticks[15:8]};
                         out.keep <= len2keep(interface_config.packet_len);
                         packet_len <= interface_config.packet_len;
                         remaining_bytes <= interface_config.packet_len - DATA_WIDTH / 8;
@@ -113,7 +114,7 @@ module frame_gen
                 if (out_ready)
                 begin
                     out.valid <= 1'b1;
-                    out.data.payload <= 2;
+                    out.data <= expand_pattern(random);
                     out.keep <= len2keep(remaining_bytes);
                     remaining_bytes <= remaining_bytes - DATA_WIDTH / 8;
                     if (remaining_bytes > DATA_WIDTH / 8)
@@ -153,6 +154,11 @@ module frame_gen
                 state <= ST_SEND_HEADER;
             end
             endcase
+
+            if (interface_config.reset_counters)
+            begin
+                interface_state <= 0;
+            end
         end
     end
 endmodule

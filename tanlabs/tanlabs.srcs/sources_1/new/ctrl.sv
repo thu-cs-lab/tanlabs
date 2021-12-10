@@ -19,7 +19,9 @@ module ctrl
 
     // control signals
     output config_reg_t config_reg,
-    input state_reg_t state_reg
+    input state_reg_t state_reg,
+
+    input [63:0] ticks
 );
 
     frame_data filtered;
@@ -117,20 +119,6 @@ module ctrl
     reg [31:0] checksum;
     reg [31:0] checksum_ip4;
     reg [15:0] counter;
-
-    reg [63:0] ticks;
-
-    always @ (posedge eth_clk or posedge reset)
-    begin
-        if (reset)
-        begin
-            ticks <= 0;
-        end
-        else
-        begin
-            ticks <= ticks + 1;
-        end
-    end
 
     reg [63:0] scratch;
 

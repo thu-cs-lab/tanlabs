@@ -16,8 +16,10 @@ typedef struct packed
 typedef struct packed
 {
     logic [63:0] nbytes;
+    logic [63:0] nbytes_l3;
     logic [63:0] npackets;
     logic [63:0] nerror;
+    logic [63:0] latency;
 } interface_recv_state_t;
 
 typedef struct packed
@@ -26,8 +28,8 @@ typedef struct packed
     logic reset_counters;
     logic [47:0] mac;
     logic [47:0] mac_dst;
-    logic [31:0] ip_src;
-    logic [31:0] ip_dst;
+    logic [127:0] ip_src;
+    logic [127:0] ip_dst;
     logic [15:0] packet_len;
     logic [63:0] gap_len;
 } interface_config_t;
@@ -57,6 +59,19 @@ typedef struct packed
     logic [15:0] dst;
     logic [15:0] src;
 } udp_hdr;
+
+typedef struct packed
+{
+    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14) - 1:0] payload;
+    logic [127:0] dst;
+    logic [127:0] src;
+    logic [7:0] hop_limit;
+    logic [7:0] next_hdr;
+    logic [15:0] payload_len;
+    logic [23:0] flow_lo;
+    logic [3:0] version;
+    logic [3:0] flow_hi;
+} ip6_hdr;
 
 typedef struct packed
 {
@@ -92,6 +107,7 @@ typedef struct packed
 {
     union packed
     {
+        ip6_hdr ip6;
         ip4_hdr ip4;
         arp_hdr arp;
     } payload;
@@ -121,6 +137,7 @@ typedef struct packed
 
 localparam ETHERTYPE_ARP = 16'h0608;
 localparam ETHERTYPE_IP4 = 16'h0008;
+localparam ETHERTYPE_IP6 = 16'hdd86;
 localparam ETHERTYPE_VLAN = 16'h0081;
 
 localparam ARP_MAGIC = 48'h040600080100;
@@ -139,5 +156,20 @@ localparam REGID_INVALID = 0;
 localparam REGID_TICKS = 1;
 localparam REGID_SCRATCH = 2;
 localparam REGID_SAMPLE = 3;
+
+function [DATAW_WIDTH - 1:0] expand_pattern;
+    input [63:0] pattern;
+    reg [63:0] pattern_reversed;
+begin
+    pattern_reversed = {<<1{pattern}};
+    expand_pattern = {pattern_reversed ^ 64'h5555555555555555,
+                      pattern_reversed ^ 64'hffffffffffffffff,
+                      pattern_reversed,
+                      pattern ^ 64'haaaaaaaaaaaaaaaa,
+                      pattern ^ 64'h5555555555555555,
+                      pattern ^ 64'hffffffffffffffff,
+                      pattern};
+end
+endfunction
 
 `endif

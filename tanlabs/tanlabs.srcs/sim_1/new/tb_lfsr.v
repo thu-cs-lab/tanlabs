@@ -2,11 +2,16 @@
 
 module tb_lfsr(
 );
-    reg reset;
+    reg reset, set;
     initial begin
+        set = 0;
         reset = 1;
         #6000
         reset = 0;
+        #60000
+        set = 1;
+        #6000
+        set = 0;
     end
 
     wire clk_125M;
@@ -19,6 +24,9 @@ module tb_lfsr(
     lfsr lfsr_i(
         .clk(clk_125M),
         .reset(reset),
+
+        .set(set),
+        .i(64'd1),
 
         .o(o)
     );
