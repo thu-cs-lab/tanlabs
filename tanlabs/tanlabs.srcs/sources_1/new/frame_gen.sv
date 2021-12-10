@@ -3,7 +3,7 @@
 
 module frame_gen
 #(
-    parameter DATA_WIDTH = 8 * 48,
+    parameter DATA_WIDTH,
     parameter ID_WIDTH = 3
 )
 (

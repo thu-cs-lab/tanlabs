@@ -2,7 +2,7 @@
 `define _TANLABS_SVH_
 
 // 'w' means wide.
-localparam DATAW_WIDTH = 8 * 48;
+localparam DATAW_WIDTH = 8 * 56;
 localparam ID_WIDTH = 3;
 
 localparam VLAN_WIDTH = 8 * 4;

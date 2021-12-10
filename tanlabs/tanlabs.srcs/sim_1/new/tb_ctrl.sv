@@ -3,7 +3,7 @@
 
 module tb_ctrl
 #(
-    parameter DATA_WIDTH = 8 * 48,
+    parameter DATA_WIDTH = 8 * 56,
     parameter ID_WIDTH = 3
 )
 (

@@ -3,7 +3,7 @@
 
 module egress_wrapper
 #(
-    parameter DATA_WIDTH = 8 * 48,
+    parameter DATA_WIDTH,
     parameter ID_WIDTH = 3,
     parameter [1:0] ENABLE_FIFO = 2'b11,
     parameter ENABLE_VLAN_TAGGER = 0

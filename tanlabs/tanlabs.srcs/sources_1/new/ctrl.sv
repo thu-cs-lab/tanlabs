@@ -3,7 +3,7 @@
 
 module ctrl
 #(
-    parameter DATA_WIDTH = 8 * 48,
+    parameter DATA_WIDTH,
     parameter ID_WIDTH = 3,
     parameter ID = 4
 )
@@ -203,13 +203,16 @@ module ctrl
                                 client_ip <= fifo.data.payload.ip4.src;
                                 client_port <= fifo.data.payload.ip4.payload.udp.src;
                                 is_write <= fifo.data.payload.ip4.payload.udp.payload[7];
-                                regid[62:16] <= {<<8{fifo.data.payload.ip4.payload.udp.payload}};
+                                {regid, regvalue[63:16]} <= {<<8{fifo.data.payload.ip4.payload.udp.payload}};
+                                regid[63] <= 1'b0;
                                 checksum <=
                                     (32'(MY_IP[15:0]) + 32'(MY_IP[31:16]) + {16'd0, PROTO_UDP, 8'd0} + 32'h1800 + 32'h1800 + 32'(MY_PORT))
                                     + ((32'(fifo.data.payload.ip4.src[15:0]) + 32'(fifo.data.payload.ip4.src[31:16])) 
                                        + (32'(fifo.data.payload.ip4.payload.udp.src) + 32'(fifo.data.payload.ip4.payload.udp.checksum)))
                                     + ((32'(fifo.data.payload.ip4.payload.udp.payload[15:0]) + 32'(fifo.data.payload.ip4.payload.udp.payload[31:16]))
-                                       + 32'(fifo.data.payload.ip4.payload.udp.payload[47:32]));
+                                       + 32'(fifo.data.payload.ip4.payload.udp.payload[47:32]) + 32'(fifo.data.payload.ip4.payload.udp.payload[63:48])
+                                       + 32'(fifo.data.payload.ip4.payload.udp.payload[79:64]) + 32'(fifo.data.payload.ip4.payload.udp.payload[95:80])
+                                       + 32'(fifo.data.payload.ip4.payload.udp.payload[111:96]));
                                 if (fifo.last)
                                 begin
                                     drop <= 1'b1;
@@ -231,14 +234,11 @@ module ctrl
                         begin
                             if (!is_arp)
                             begin
-                                regid[15:0] <= {<<8{fifo.data[15:0]}};
-                                regvalue <= {<<8{fifo.data[16 +: 64]}};
+                                regvalue[15:0] <= {<<8{fifo.data[15:0]}};
 
-                                checksum <= checksum + 32'(fifo.data[79:64])
-                                    + ((32'(fifo.data[15:0]) + 32'(fifo.data[31:16]))
-                                       + (32'(fifo.data[47:32]) + 32'(fifo.data[63:48])));
+                                checksum <= checksum + 32'(fifo.data[15:0]);
 
-                                if (!fifo.keep[9])
+                                if (!fifo.keep[1])
                                 begin
                                     drop <= 1'b1;
                                 end
@@ -356,7 +356,7 @@ module ctrl
             begin
                 out <= 0;
                 out.valid <= 1'b1;
-                out.keep <= {48{1'b1}};
+                out.keep <= {56{1'b1}};
                 out.last <= 1'b0;
                 out.data.ethertype <= ETHERTYPE_IP4;
                 out.data.dst <= client_mac;
@@ -373,15 +373,15 @@ module ctrl
                 out.data.payload.ip4.payload.udp.dst <= client_port;
                 out.data.payload.ip4.payload.udp.len <= 16'h1800;
                 out.data.payload.ip4.payload.udp.checksum <= ~checksum_reduce(checksum);
-                out.data.payload.ip4.payload.udp.payload <= regid_hton[47:0];
+                out.data.payload.ip4.payload.udp.payload <= {regvalue_hton[47:0], regid_hton};
                 state <= ST_SEND_UDP;
             end
             ST_SEND_UDP:
             begin
                 if (out_ready)
                 begin
-                    out.data <= {regvalue_hton, regid_hton[63:48]};
-                    out.keep <= {38'd0, {10{1'b1}}};
+                    out.data <= regvalue_hton[63:48];
+                    out.keep <= {54'd0, {2{1'b1}}};
                     out.last <= 1'b1;
                     state <= ST_SEND_UDP_2;
                 end

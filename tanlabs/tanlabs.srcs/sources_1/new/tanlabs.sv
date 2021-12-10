@@ -383,15 +383,30 @@ module tanlabs(
     // Tester Interconnections
 
     wire [63:0] random;
-
     lfsr lfsr_i(
         .clk(eth_clk),
         .reset(reset_eth),
 
+        .set(0),
+        .i(0),
+
         .o(random)
     );
 
-    localparam DATA_WIDTH = 8 * 48;
+    reg [63:0] ticks;
+    always @ (posedge eth_clk or posedge reset)
+    begin
+        if (reset)
+        begin
+            ticks <= 0;
+        end
+        else
+        begin
+            ticks <= ticks + 1;
+        end
+    end
+
+    localparam DATA_WIDTH = 8 * 56;
     localparam ID_WIDTH = 3;
 
     state_reg_t state_reg;

@@ -3,7 +3,7 @@
 
 module ingress_wrapper
 #(
-    parameter DATA_WIDTH = 8 * 48,
+    parameter DATA_WIDTH,
     parameter ID_WIDTH = 3,
     parameter ID = 0
 )

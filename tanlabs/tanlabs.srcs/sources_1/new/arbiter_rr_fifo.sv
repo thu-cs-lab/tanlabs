@@ -3,7 +3,7 @@
 
 module arbiter_rr_fifo
 #(
-    parameter DATA_WIDTH = 8 * 48,
+    parameter DATA_WIDTH,
     parameter ID_WIDTH = 3,
     parameter [3:0] ENABLE_FIFO = 4'b1111
 )
