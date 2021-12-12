@@ -382,21 +382,10 @@ module tanlabs(
 
     // Tester Interconnections
 
-    wire [63:0] random;
-    lfsr lfsr_i(
-        .clk(eth_clk),
-        .reset(reset_eth),
-
-        .set(0),
-        .i(0),
-
-        .o(random)
-    );
-
     reg [63:0] ticks;
-    always @ (posedge eth_clk or posedge reset)
+    always @ (posedge eth_clk or posedge reset_eth)
     begin
-        if (reset)
+        if (reset_eth)
         begin
             ticks <= 0;
         end
@@ -468,7 +457,6 @@ module tanlabs(
                 .interface_config(config_reg.conf[i]),
                 .interface_state(state_reg.send[i]),
 
-                .random(random),
                 .ticks(ticks)
             );
 

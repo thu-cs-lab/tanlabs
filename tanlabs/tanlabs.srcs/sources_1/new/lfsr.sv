@@ -4,6 +4,8 @@ module lfsr(
     input clk,
     input reset,
 
+    input wire ce,
+
     input wire set,
     input wire [63:0] i,
 
@@ -16,11 +18,11 @@ module lfsr(
     reg [63:0] state, next_state;
     reg feedback;
 
-    integer i;
+    integer j;
     always @ (*)
     begin
         next_state = set ? i : state;
-        for (i = 0; i < 64; i = i + 1)
+        for (j = 0; j < 64; j = j + 1)
         begin
             feedback = ^(next_state & TAP);
             next_state = {next_state[62:0], feedback};
@@ -33,7 +35,7 @@ module lfsr(
         begin
             state <= INIT;
         end
-        else
+        else if (ce)
         begin
             state <= next_state;
         end

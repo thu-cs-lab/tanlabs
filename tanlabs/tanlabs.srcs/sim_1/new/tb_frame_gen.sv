@@ -37,17 +37,9 @@ module tb_frame_gen
         interface_config.mac_dst = MY_MAC + 2;
         interface_config.ip_src = 128'h01000000000000000000970406aa0e2a;
         interface_config.ip_dst = 128'h01000000000000000100970406aa0e2a;
-        interface_config.packet_len = 46 + 14;
+        interface_config.packet_len = 46 + 14 + 108;
         interface_config.gap_len = 8 + 4 + 12;  // preamble, FCS, inter-frame gap
     end
-
-    wire [63:0] random;
-    lfsr lfsr_i(
-        .clk(clk_125M),
-        .reset(reset),
-
-        .o(random)
-    );
 
     reg [63:0] ticks;
     always @ (posedge clk_125M or posedge reset)
@@ -77,7 +69,6 @@ module tb_frame_gen
         .interface_config(interface_config),
         .interface_state(interface_state),
 
-        .random(random),
         .ticks(ticks)
     );
 

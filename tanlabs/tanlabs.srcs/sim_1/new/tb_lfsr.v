@@ -25,6 +25,8 @@ module tb_lfsr(
         .clk(clk_125M),
         .reset(reset),
 
+        .ce(1'b1),
+
         .set(set),
         .i(64'd1),
 

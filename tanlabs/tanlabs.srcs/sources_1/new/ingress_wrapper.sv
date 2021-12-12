@@ -53,7 +53,7 @@ module ingress_wrapper
     wire to_data_plane =
         in.data.dst == interface_config.mac
         && in.data.ethertype == ETHERTYPE_IP6
-        && in.data.payload.ip6.proto == PROTO_TEST;
+        && in.data.payload.ip6.next_hdr == PROTO_TEST;
 
     wire new_dest = to_data_plane;
     reg saved_dest;
@@ -124,12 +124,6 @@ module ingress_wrapper
 
     assign out.id = ID;
 
-//    typedef enum
-//    {
-//        ST_
-//    } state_t;
-
-//    state_t state;
     assign dp_ready = 1'b1;
 
     function [DATA_WIDTH / 8 - 1:0] len2keep;
@@ -153,7 +147,7 @@ module ingress_wrapper
         begin
             if (keep[i])
             begin
-                keep2len = i;
+                keep2len = i + 1;
             end
         end
     end
@@ -162,9 +156,12 @@ module ingress_wrapper
     wire [63:0] pattern;
     wire [63:0] set_pattern;
     wire set_lfsr;
+    wire lfsr_ce;
     lfsr lfsr_i(
         .clk(eth_clk),
         .reset(reset),
+
+        .ce(lfsr_ce),
 
         .set(set_lfsr),
         .i(set_pattern),
@@ -187,8 +184,9 @@ module ingress_wrapper
     reg current_error;
     reg [63:0] latency;
     reg [15:0] remaining_bytes;
+    wire [15:0] payload_len = {<<8{dp.data.payload.ip6.payload_len}};
     wire [15:0] remaining_bytes_mux = state == ST_RECV_HEADER ?
-        {<<8{dp.data.payload.ip6.payload_len}} + 54
+        payload_len + 54
         : remaining_bytes;
     reg expected_last;
     reg [DATA_WIDTH / 8 - 1:0] expected_keep;
@@ -203,12 +201,13 @@ module ingress_wrapper
         end
     end
 
-    wire [63:0] expected_pattern64 = state == ST_RECV_FIRST_PAYLOAD : dp.data[63:0] ? pattern;
+    wire [63:0] expected_pattern64 = state == ST_RECV_FIRST_PAYLOAD ? dp.data[63:0] : pattern;
     wire [DATA_WIDTH - 1:0] expected_pattern = expand_pattern(expected_pattern64);
     wire pattern_mismatch = |((dp.data ^ expected_pattern) & expected_keep_bit);
 
     assign set_pattern = dp.data[63:0];
     assign set_lfsr = dp.valid && state == ST_RECV_FIRST_PAYLOAD;
+    assign lfsr_ce = dp.valid;
 
     always @ (*)
     begin

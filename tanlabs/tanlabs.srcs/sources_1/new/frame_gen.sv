@@ -17,7 +17,6 @@ module frame_gen
     input interface_config_t interface_config,
     output interface_send_state_t interface_state,
 
-    input [63:0] random,
     input [63:0] ticks
 );
 
@@ -33,6 +32,20 @@ module frame_gen
     end
     endfunction
 
+    wire [63:0] random;
+    reg lfsr_ce;
+    lfsr lfsr_i(
+        .clk(eth_clk),
+        .reset(reset),
+
+        .ce(lfsr_ce),
+
+        .set(1'b0),
+        .i(0),
+
+        .o(random)
+    );
+
     typedef enum
     {
         ST_SEND_HEADER,
@@ -45,6 +58,30 @@ module frame_gen
     reg [15:0] packet_len;
     reg [15:0] remaining_bytes;
     reg [63:0] gap_counter;
+
+    always @ (*)
+    begin
+        lfsr_ce = 1'b1;
+        case (state)
+        ST_SEND_HEADER:
+        begin
+            if (!out_ready && out.valid)
+            begin
+                lfsr_ce = 1'b0;
+            end
+        end
+        ST_SEND_PAYLOAD:
+        begin
+            if (!out_ready)
+            begin
+                lfsr_ce = 1'b0;
+            end
+        end
+        default:
+        begin
+        end
+        endcase
+    end
 
     always @ (posedge eth_clk or posedge reset)
     begin
