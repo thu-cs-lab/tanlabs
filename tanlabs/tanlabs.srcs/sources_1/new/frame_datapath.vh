@@ -152,10 +152,32 @@ localparam MY_MAC = 48'h303032445754;  // TWD200
 localparam MY_IP = 32'h6408080a;  // 10.8.8.100
 localparam MY_PORT = 16'h60ea;  // 60000
 
+// Global registers.
 localparam REGID_INVALID = 0;
 localparam REGID_TICKS = 1;
 localparam REGID_SCRATCH = 2;
-localparam REGID_SAMPLE = 3;
+localparam REGID_RESET_COUNTERS = 3;
+localparam REGID_SAMPLE = 4;
+// Per-interface registers.
+localparam REGID_IFACE_WIDTH = ID_WIDTH;
+localparam REGID_IFACE_SHIFT = 8;
+localparam REGID_IFACE_FLAG = REGID_IFACE_SHIFT + REGID_IFACE_WIDTH;
+localparam REGID_CONF_ENABLE = 0;
+localparam REGID_CONF_MAC = 1;
+localparam REGID_CONF_MAC_DST = 2;
+localparam REGID_CONF_IP_SRC_HI = 3;
+localparam REGID_CONF_IP_SRC_LO = 4;
+localparam REGID_CONF_IP_DST_HI = 5;
+localparam REGID_CONF_IP_DST_LO = 6;
+localparam REGID_CONF_PACKET_LEN = 7;
+localparam REGID_CONF_GAP_LEN = 8;
+localparam REGID_SEND_NBYTES = 9;
+localparam REGID_SEND_NPACKETS = 10;
+localparam REGID_RECV_NBYTES = 11;
+localparam REGID_RECV_NBYTES_L3 = 12;
+localparam REGID_RECV_NPACKETS = 13;
+localparam REGID_RECV_NERROR = 14;
+localparam REGID_RECV_LATENCY = 15;
 
 function [DATAW_WIDTH - 1:0] expand_pattern;
     input [63:0] pattern;

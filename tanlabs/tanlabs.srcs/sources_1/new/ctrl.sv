@@ -109,6 +109,8 @@ module ctrl
     } state_t;
     state_t state;
 
+    state_reg_t state_reg_sample;
+
     reg is_arp, is_udp, drop;
     reg [47:0] client_mac;
     reg [31:0] client_ip;
@@ -124,6 +126,14 @@ module ctrl
 
     wire [63:0] regid_hton = {<<8{regid}};
     wire [63:0] regvalue_hton = {<<8{regvalue}};
+
+    wire [REGID_IFACE_WIDTH - 1:0] ifaceid = regid[REGID_IFACE_SHIFT +: REGID_IFACE_WIDTH];
+    interface_config_t config_sel;
+    assign config_sel = config_reg.conf[ifaceid];
+    interface_send_state_t state_send_sel;
+    assign state_send_sel = state_reg_sample.send[ifaceid];
+    interface_recv_state_t state_recv_sel;
+    assign state_recv_sel = state_reg_sample.recv[ifaceid];
 
     assign fifo_ready = state == ST_RECV || !fifo.valid;
 
@@ -149,6 +159,7 @@ module ctrl
 
             scratch <= 0;
             config_reg <= 0;
+            state_reg_sample <= 0;
         end
         else
         begin
@@ -298,28 +309,68 @@ module ctrl
                 // TODO: read/write registers
                 if (!is_write)
                 begin
-                    case (regid)
-                    REGID_TICKS: regvalue <= ticks;
-                    REGID_SCRATCH: regvalue <= scratch;
-                    default:
+                    if (!regid[REGID_IFACE_FLAG])
                     begin
-                        // no such register
-                        regid <= REGID_INVALID;
-                        regvalue <= 0;
+                        case (regid[0 +: REGID_IFACE_SHIFT])
+                        REGID_TICKS: regvalue <= ticks;
+                        REGID_SCRATCH: regvalue <= scratch;
+                        REGID_RESET_COUNTERS: regvalue <= config_reg.conf[0].reset_counters;
+                        default:
+                        begin
+                            // No such register.
+                            regid <= REGID_INVALID;
+                            regvalue <= 0;
+                        end
+                        endcase
                     end
-                    endcase
+                    else
+                    begin
+                        case (regid[0 +: REGID_IFACE_SHIFT])
+                        REGID_CONF_ENABLE: regvalue <= config_sel.enable;
+                        default:
+                        begin
+                            // No such register.
+                            regid <= REGID_INVALID;
+                            regvalue <= 0;
+                        end
+                        endcase
+                    end
                 end
                 else
                 begin
-                    case (regid)
-                    REGID_SCRATCH: scratch <= regvalue;
-                    default:
+                    regvalue <= 0;
+                    if (!regid[REGID_IFACE_FLAG])
                     begin
-                        // no such writeable register
-                        regid <= REGID_INVALID;
-                        regvalue <= 0;
+                        case (regid[0 +: REGID_IFACE_SHIFT])
+                        REGID_SCRATCH: scratch <= regvalue;
+                        REGID_RESET_COUNTERS:
+                        begin
+                            config_reg.conf[0].reset_counters <= regvalue[0];
+                            config_reg.conf[1].reset_counters <= regvalue[0];
+                            config_reg.conf[2].reset_counters <= regvalue[0];
+                            config_reg.conf[3].reset_counters <= regvalue[0];
+                        end
+                        REGID_SAMPLE: state_reg_sample <= state_reg;
+                        default:
+                        begin
+                            // No such writeable register.
+                            regid <= REGID_INVALID;
+                            regvalue <= 0;
+                        end
+                        endcase
                     end
-                    endcase
+                    else
+                    begin
+                        case (regid[0 +: REGID_IFACE_SHIFT])
+                        REGID_CONF_ENABLE: config_reg.conf[ifaceid].enable <= regvalue;
+                        default:
+                        begin
+                            // No such writeable register.
+                            regid <= REGID_INVALID;
+                            regvalue <= 0;
+                        end
+                        endcase
+                    end
                 end
                 state <= ST_PREPARE_CHECKSUM;
             end
