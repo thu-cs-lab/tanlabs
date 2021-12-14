@@ -267,10 +267,10 @@ module ingress_wrapper
                 case (state)
                 ST_RECV_HEADER:
                 begin
-                    latency <= ticks - {dp.data.payload.ip6.flow_lo[15:8],
-                                        dp.data.payload.ip6.flow_lo[23:16],
-                                        dp.data.payload.ip6.payload[7:0],
-                                        dp.data.payload.ip6.flow_lo[7:0]};
+                    latency <= ticks[31:0] - {dp.data.payload.ip6.flow_lo[15:8],
+                                              dp.data.payload.ip6.flow_lo[23:16],
+                                              dp.data.payload.ip6.payload[7:0],
+                                              dp.data.payload.ip6.flow_lo[7:0]};
                     nbytes_l3 <= remaining_bytes_mux;
                     state <= ST_RECV_FIRST_PAYLOAD;
                 end

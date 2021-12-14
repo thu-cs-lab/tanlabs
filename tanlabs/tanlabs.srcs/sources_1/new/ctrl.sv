@@ -109,6 +109,7 @@ module ctrl
     } state_t;
     state_t state;
 
+    reg [63:0] ticks_sample;
     state_reg_t state_reg_sample;
 
     reg is_arp, is_udp, drop;
@@ -159,6 +160,7 @@ module ctrl
 
             scratch <= 0;
             config_reg <= 0;
+            ticks_sample <= 0;
             state_reg_sample <= 0;
         end
         else
@@ -315,6 +317,7 @@ module ctrl
                         REGID_TICKS: regvalue <= ticks;
                         REGID_SCRATCH: regvalue <= scratch;
                         REGID_RESET_COUNTERS: regvalue <= config_reg.conf[0].reset_counters;
+                        REGID_TICKS_SAMPLE: regvalue <= ticks_sample;
                         default:
                         begin
                             // No such register.
@@ -327,6 +330,21 @@ module ctrl
                     begin
                         case (regid[0 +: REGID_IFACE_SHIFT])
                         REGID_CONF_ENABLE: regvalue <= config_sel.enable;
+                        REGID_CONF_MAC: regvalue <= {<<8{16'd0, config_sel.mac}};
+                        REGID_CONF_MAC_DST: regvalue <= {<<8{16'd0, config_sel.mac_dst}};
+                        REGID_CONF_IP_SRC_HI: regvalue <= {<<8{config_sel.ip_src[63:0]}};
+                        REGID_CONF_IP_SRC_LO: regvalue <= {<<8{config_sel.ip_src[127:64]}};
+                        REGID_CONF_IP_DST_HI: regvalue <= {<<8{config_sel.ip_dst[63:0]}};
+                        REGID_CONF_IP_DST_LO: regvalue <= {<<8{config_sel.ip_dst[127:64]}};
+                        REGID_CONF_PACKET_LEN: regvalue <= config_sel.packet_len;
+                        REGID_CONF_GAP_LEN: regvalue <= config_sel.gap_len;
+                        REGID_SEND_NBYTES: regvalue <= state_send_sel.nbytes;
+                        REGID_SEND_NPACKETS: regvalue <= state_send_sel.npackets;
+                        REGID_RECV_NBYTES: regvalue <= state_recv_sel.nbytes;
+                        REGID_RECV_NBYTES_L3: regvalue <= state_recv_sel.nbytes_l3;
+                        REGID_RECV_NPACKETS: regvalue <= state_recv_sel.npackets;
+                        REGID_RECV_NERROR: regvalue <= state_recv_sel.nerror;
+                        REGID_RECV_LATENCY: regvalue <= state_recv_sel.latency;
                         default:
                         begin
                             // No such register.
@@ -350,7 +368,11 @@ module ctrl
                             config_reg.conf[2].reset_counters <= regvalue[0];
                             config_reg.conf[3].reset_counters <= regvalue[0];
                         end
-                        REGID_SAMPLE: state_reg_sample <= state_reg;
+                        REGID_SAMPLE:
+                        begin
+                            ticks_sample <= ticks;
+                            state_reg_sample <= state_reg;
+                        end
                         default:
                         begin
                             // No such writeable register.
@@ -363,6 +385,14 @@ module ctrl
                     begin
                         case (regid[0 +: REGID_IFACE_SHIFT])
                         REGID_CONF_ENABLE: config_reg.conf[ifaceid].enable <= regvalue;
+                        REGID_CONF_MAC: config_reg.conf[ifaceid].mac <= regvalue_hton;
+                        REGID_CONF_MAC_DST: config_reg.conf[ifaceid].mac_dst <= regvalue_hton;
+                        REGID_CONF_IP_SRC_HI: config_reg.conf[ifaceid].ip_src[63:0] <= regvalue_hton;
+                        REGID_CONF_IP_SRC_LO: config_reg.conf[ifaceid].ip_src[127:64] <= regvalue_hton;
+                        REGID_CONF_IP_DST_HI: config_reg.conf[ifaceid].ip_dst[63:0] <= regvalue_hton;
+                        REGID_CONF_IP_DST_LO: config_reg.conf[ifaceid].ip_dst[127:64] <= regvalue_hton;
+                        REGID_CONF_PACKET_LEN: config_reg.conf[ifaceid].packet_len <= regvalue;
+                        REGID_CONF_GAP_LEN: config_reg.conf[ifaceid].gap_len <= regvalue;
                         default:
                         begin
                             // No such writeable register.

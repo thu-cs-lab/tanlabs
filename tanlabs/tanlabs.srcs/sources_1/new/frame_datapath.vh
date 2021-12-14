@@ -158,6 +158,7 @@ localparam REGID_TICKS = 1;
 localparam REGID_SCRATCH = 2;
 localparam REGID_RESET_COUNTERS = 3;
 localparam REGID_SAMPLE = 4;
+localparam REGID_TICKS_SAMPLE = 5;
 // Per-interface registers.
 localparam REGID_IFACE_WIDTH = ID_WIDTH;
 localparam REGID_IFACE_SHIFT = 8;
