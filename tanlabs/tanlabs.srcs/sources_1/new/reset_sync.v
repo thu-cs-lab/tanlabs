@@ -6,18 +6,18 @@ module reset_sync(
     output wire o
 );
 
-    reg [7:0] reset_buff;
+    reg [31:0] reset_buff;
     always @ (posedge clk or posedge i)
     begin
         if (i)
         begin
-            reset_buff <= 8'b11111111;
+            reset_buff <= 32'hffffffff;
         end
         else
         begin
-            reset_buff <= {reset_buff[6:0], 1'b0};
+            reset_buff <= {reset_buff[30:0], 1'b0};
         end
     end
 
-    assign o = reset_buff[7];
+    assign o = reset_buff[31];
 endmodule

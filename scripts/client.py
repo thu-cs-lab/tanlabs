@@ -152,15 +152,26 @@ def sample():
         s['interfaces'].append(iface)
     return s
 
+def print_sample(s):
+    print('Sample Ticks:', s['ticks'])
+    print('# En Tx#bytes    Tx#packets Rx#bytes    Rx#l3_bytes Rx#packets Rx#error   RxLatency')
+    for i, iface in enumerate(s['interfaces']):
+        print('{} {: <2} {: <11} {: <10} {: <11} {: <11} {: <10} {: <10} {: <9}'.format(
+              i, int(iface['enable']), iface['send_nbytes'], iface['send_npackets'],
+              iface['recv_nbytes'], iface['recv_nbytes_l3'], iface['recv_npackets'],
+              iface['recv_nerror'], iface['recv_latency']))
+
 print('Current Ticks:', read_reg(REGID_TICKS))
 print('Scratch:', read_reg(REGID_SCRATCH))
-
-print(ensure_mac('54:57:44:32:30:30'))
-
-begin_ticks = read_reg(1)
+begin_ticks = read_reg(REGID_TICKS)
 time.sleep(1.0)
-end_ticks = read_reg(1)
+end_ticks = read_reg(REGID_TICKS)
 print('Estimated Frequency:', end_ticks - begin_ticks, 'Hz')
+
+set_interface(0, False)
+set_interface(1, False)
+set_interface(2, False)
+set_interface(3, False)
 
 set_interface(0, True, '54:57:44:32:30:30', '54:57:44:32:30:31',
               '2a0e:aa06:497::1', '2a0e:aa06:497:1::1', 46 + 14, 0)
@@ -172,18 +183,11 @@ set_interface(3, True, '54:57:44:32:30:33', '54:57:44:32:30:32',
               '2a0e:aa06:497:3::1', '2a0e:aa06:497:2::1', 46 + 14, 0)
 
 reset_counters()
+time.sleep(1.0)
+print_sample(sample())
 
-def pretty(o, indent=0):
-    if isinstance(o, dict):
-        for key, value in o.items():
-            print('  ' * indent + str(key))
-            pretty(value, indent + 1)
-    elif isinstance(o, list):
-        for e in o:
-            pretty(e, indent + 1)
-    else:
-        print('  ' * indent + str(o))
+# exit(0)
 
 while True:
     time.sleep(1.0)
-    pretty(sample())
+    print_sample(sample())
