@@ -1,0 +1,19 @@
+#!/bin/bash
+
+. $(dirname $(readlink -f ${0}))/conf
+
+cd $(dirname $(dirname $(readlink -f ${0})))
+
+total_imported=0
+total_exported=0
+for ((i=0; i < ${NINTERFACES}; i++)) do
+    echo ${NETNS_PREFIX}${i}
+    msg=`echo show proto all rip1 | birdc -s ./run/bird-${i}.ctl | grep "Routes:"`
+    echo " " ${msg}
+    imported=`echo ${msg} | grep -E " [0-9]+ imported" -o | grep -E "[0-9]+" -o`
+    total_imported=$((${total_imported} + ${imported}))
+    exported=`echo ${msg} | grep -E " [0-9]+ exported" -o | grep -E "[0-9]+" -o`
+    total_exported=$((${total_exported} + ${exported}))
+done
+
+echo Total: ${total_imported}/${total_exported}

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+. $(dirname $(readlink -f ${0}))/conf
+
+cd $(dirname $(dirname $(readlink -f ${0})))
+
+SKIP=${1}
+N=${2}
+BIRDC=birdc
+
+./scripts/genconf.py ./scripts/fib_shuffled.txt ${SKIP} ${N}
+
+for ((i = 0; i < ${NINTERFACES}; i++)) do
+    echo configure | ${BIRDC} -s ./run/bird-${i}.ctl
+done

@@ -1,0 +1,16 @@
+#!/bin/bash
+set -e
+
+IFACE=${1}
+
+# RIP 20000 routes in 3s: 1.1648Mbps
+LIMIT=1.5Mbit
+
+tc qdisc del dev ${IFACE} root || true
+tc qdisc add dev ${IFACE} root handle 1:0 htb default 1
+tc class add dev ${IFACE} parent 1:0 classid 1:1 htb rate ${LIMIT} ceil ${LIMIT}
+tc filter add dev ${IFACE} parent 1:0 prio 1 protocol ipv6 u32 match ip dport 521 0xffff flowid 1:1
+
+tc -s qdisc ls dev ${IFACE}
+tc -s class ls dev ${IFACE}
+tc -s filter ls dev ${IFACE}

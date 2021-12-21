@@ -1,0 +1,10 @@
+#!/bin/bash
+
+. $(dirname $(readlink -f ${0}))/conf
+
+cd $(dirname $(dirname $(readlink -f ${0})))
+mkdir -p run
+
+for ((i=0; i < ${NINTERFACES}; i++)) do
+    ip netns exec ${NETNS_PREFIX}${i} bird -d -c ./conf/bird-${i}.conf -s ./run/bird-${i}.ctl &
+done

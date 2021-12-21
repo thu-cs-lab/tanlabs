@@ -14,5 +14,7 @@
 *.log
 *.str
 .Xil/
+conf/
+run/
 in_frames.pcap
 out_frames.pcap

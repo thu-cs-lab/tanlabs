@@ -7,16 +7,84 @@ if [ -z "${1}" ]; then
 fi
 
 IFACE=${1}
-BASE_VLAN=256
-CTRL_VLAN=$((${BASE_VLAN} + 4))
-IFACE_PREFIX=tanlabs-vlan
-CLIENT_IP=10.8.8.2
-SERVER_IP=10.8.8.100
+. $(dirname $(readlink -f ${0}))/conf
 
-for ((i=${BASE_VLAN}; i <= ${BASE_VLAN} + 4; i++)) do
-    ip link add link ${IFACE} name ${IFACE_PREFIX}${i} type vlan id ${i}
-    ip link set ${IFACE_PREFIX}${i} up
+function gen_bird {
+    i=${1}; shift
+    iface=${1}; shift
+
+    cat >./conf/bird-${i}.conf <<EOF
+# bird2
+
+# random router id
+router id 10.0.${i}.254;
+
+protocol device {
+
+}
+
+protocol kernel {
+    learn;
+    persist off;
+    ipv6 {
+        import none;
+        export none;
+    };
+
+    metric 1024;
+}
+
+protocol direct {
+    ipv6;
+    interface "${iface}";
+}
+
+protocol static {
+    ipv6 {
+        import filter {
+            rip_metric = 2;
+            accept;
+        };
+        export none;
+    };
+    include "rib-${i}.conf";
+}
+
+protocol rip ng {
+    ipv6 {
+        import all;
+        export all;
+    };
+    debug all;
+    interface "${iface}" {
+        update time 3;
+        timeout time 18;
+        garbage time 12;
+    };
+}
+EOF
+
+    touch ./conf/rib-${i}.conf
+}
+
+cd $(dirname $(dirname $(readlink -f ${0})))
+mkdir -p conf
+
+./scripts/clean
+sleep 0.5
+
+for ((i=0; i < ${NINTERFACES}; i++)) do
+    ip link add link ${IFACE} name ${IFACE_PREFIX}${i} type vlan id $((${BASE_VLAN} + ${i}))
+    ip netns add ${NETNS_PREFIX}${i}
+    ip link set ${IFACE_PREFIX}${i} netns ${NETNS_PREFIX}${i}
+    ip netns exec ${NETNS_PREFIX}${i} ip link set lo up
+    ip netns exec ${NETNS_PREFIX}${i} ip link set ${IFACE_PREFIX}${i} up
+    ip netns exec ${NETNS_PREFIX}${i} ip addr
+    ip netns exec ${NETNS_PREFIX}${i} ./scripts/setup-tc ${IFACE_PREFIX}${i}
+    gen_bird ${i} ${IFACE_PREFIX}${i}
 done
 
-ip addr add ${CLIENT_IP}/24 dev ${IFACE_PREFIX}${CTRL_VLAN}
-arping -c 1 -I ${IFACE_PREFIX}${CTRL_VLAN} ${SERVER_IP}
+ip link add link ${IFACE} name ${IFACE_PREFIX}ctrl type vlan id ${CTRL_VLAN}
+ip link set ${IFACE_PREFIX}ctrl up
+ip addr add ${CLIENT_IP}/24 dev ${IFACE_PREFIX}ctrl
+arping -c 1 -I ${IFACE_PREFIX}ctrl ${SERVER_IP}

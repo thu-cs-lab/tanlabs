@@ -1,0 +1,9 @@
+#!/bin/bash
+
+export BASE_VLAN=256
+export CTRL_VLAN=$((${BASE_VLAN} + 4))
+export NINTERFACES=4
+export IFACE_PREFIX=tanlabs-if
+export NETNS_PREFIX=tanlabs
+export CLIENT_IP=10.8.8.2
+export SERVER_IP=10.8.8.100
