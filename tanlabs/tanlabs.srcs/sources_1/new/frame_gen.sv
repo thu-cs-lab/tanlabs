@@ -178,6 +178,12 @@ module frame_gen
             begin
                 if (out_ready)
                 begin
+                    if (out.valid)
+                    begin
+                        // count previous packet.
+                        interface_state.nbytes <= interface_state.nbytes + packet_len;
+                        interface_state.npackets <= interface_state.npackets + 1;
+                    end
                     out.valid <= 1'b0;
                 end
                 if (gap_counter - 1 == 0)
