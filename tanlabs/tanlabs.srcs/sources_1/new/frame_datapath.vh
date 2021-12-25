@@ -28,7 +28,9 @@ typedef struct packed
     logic reset_counters;
     logic [47:0] mac;
     logic [47:0] mac_dst;
+    logic [63:0] ip_src_hi;
     logic [127:0] ip_src;
+    logic [63:0] ip_dst_hi;
     logic [127:0] ip_dst;
     logic [15:0] packet_len;
     logic [63:0] gap_len;

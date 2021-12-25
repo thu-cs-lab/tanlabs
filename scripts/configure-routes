@@ -9,6 +9,7 @@ N=${2}
 BIRDC=birdc
 
 ./scripts/genconf.py ./scripts/fib_shuffled.txt ${SKIP} ${N}
+./scripts/gen-test-ip ./scripts/fib_shuffled.txt ${SKIP} ${N} < /dev/null > ./conf/testip.txt
 
 for ((i = 0; i < ${NINTERFACES}; i++)) do
     echo configure | ${BIRDC} -s ./run/bird-${i}.ctl

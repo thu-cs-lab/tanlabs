@@ -5,8 +5,11 @@ import datetime
 import ipaddress
 import json
 import pyroute2
+import random
+import re
 import socket
 import struct
+import subprocess
 import time
 
 import pandas
@@ -49,6 +52,8 @@ REGID_RECV_NBYTES_L3 = 12
 REGID_RECV_NPACKETS = 13
 REGID_RECV_NERROR = 14
 REGID_RECV_LATENCY = 15
+
+REGEX_ND = re.compile(r'Target link-layer address: ([0-9A-Fa-f:]+)\n')
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.connect((SERVER_IP, SERVER_PORT))
@@ -116,19 +121,22 @@ def reset_counters():
     write_reg(REGID_RESET_COUNTERS, 1)
     write_reg(REGID_RESET_COUNTERS, 0)
 
-def set_interface(iface, enable=None, mac=None, mac_dst=None,
-                  ip_src=None, ip_dst=None, packet_len=None, gap_len=None):
+def do_nd(netns, iface, ip):
+    args = ['ip', 'netns', 'exec', netns, 'ndisc6', str(ip), iface]
+    print(' '.join(args))
+    out = ''
+    with subprocess.Popen(args, stdout=subprocess.PIPE) as p:
+        out = p.stdout.read().decode()
+    m = REGEX_ND.search(out)
+    if not m:
+        return None
+    return m.group(1)
+
+def set_interface(iface, enable=None, ip_src=None, ip_dst=None, packet_len=None, gap_len=None,
+                  mac=None, mac_dst=None, gateway=None):
     regid_base = (iface << REGID_IFACE_SHIFT) | (1 << REGID_IFACE_FLAG)
     cp_iface = IFACE_PREFIX + str(iface)
     cp_netns = NETNS_PREFIX + str(iface)
-    if mac is not None:
-        mac = ensure_mac(mac)
-        write_reg_raw(regid_base + REGID_CONF_MAC, mac)
-        with pyroute2.NetNS(cp_netns) as ip:
-            dev = ip.link_lookup(ifname=cp_iface)[0]
-            ip.link('set', index=dev, address=':'.join('{:02x}'.format(b) for b in mac))
-    if mac_dst is not None:
-        write_reg_raw(regid_base + REGID_CONF_MAC_DST, ensure_mac(mac_dst))
     if ip_src is not None:
         ip_src = ensure_ip(ip_src)
         ip_raw = ip_src.packed
@@ -149,6 +157,22 @@ def set_interface(iface, enable=None, mac=None, mac_dst=None,
         write_reg(regid_base + REGID_CONF_PACKET_LEN, packet_len)
     if gap_len is not None:
         write_reg(regid_base + REGID_CONF_GAP_LEN, gap_len)
+    if mac is not None:
+        mac = ensure_mac(mac)
+        write_reg_raw(regid_base + REGID_CONF_MAC, mac)
+        with pyroute2.NetNS(cp_netns) as ip:
+            dev = ip.link_lookup(ifname=cp_iface)[0]
+            ip.link('set', index=dev, address=':'.join('{:02x}'.format(b) for b in mac))
+    if mac_dst is not None:
+        write_reg_raw(regid_base + REGID_CONF_MAC_DST, ensure_mac(mac_dst))
+    if gateway is not None:
+        gateway = ensure_ip(gateway)
+        gateway_mac = do_nd(cp_netns, cp_iface, gateway)
+        if not gateway_mac:
+            print('Warning: cannot find MAC address for', str(gateway))
+        else:
+            print(str(gateway), '->', gateway_mac)
+        set_interface(iface, mac_dst=gateway_mac)
     # Set enable at the end.
     if enable is not None:
         write_reg(regid_base + REGID_CONF_ENABLE, int(enable))
@@ -285,6 +309,41 @@ def test_all(name='results'):
     g.fig.tight_layout()
     g.savefig(f'{name}-latency.pdf')
 
+def test_ip(name='results'):
+    set_interface(0, False, gap_len=int(SERVER_FREQ / 10000))
+    set_interface(1, False, gap_len=int(SERVER_FREQ / 10000))
+    set_interface(2, False, gap_len=int(SERVER_FREQ / 10000))
+    set_interface(3, False, gap_len=int(SERVER_FREQ / 10000))
+
+    interfaces = [[] for _ in range(NINTERFACES)]
+    with open('./conf/testip.txt', 'r') as f:
+        for l in f:
+            if not l.strip():
+                continue
+            ip, nexthop_ip, nexthop_iface = l.strip().split()
+            interfaces[int(nexthop_iface)].append(ip)
+
+    send_npackets = 0
+    recv_npackets = 0
+    for i, iface in enumerate(interfaces):
+        send_iface = i + 1
+        if send_iface == NINTERFACES:
+            send_iface = 0
+        begin_sample = sample()
+        for ip in iface:
+            set_interface(send_iface, True, ip_dst=ip, packet_len=random.randint(46, 1500) + 14)
+            time.sleep(1 / 10000)
+        set_interface(send_iface, False)
+        time.sleep(0.1)
+        end_sample = sample()
+        send_npackets += end_sample['interfaces'][send_iface]['send_npackets'] \
+                         - begin_sample['interfaces'][send_iface]['send_npackets']
+        recv_npackets += end_sample['interfaces'][i]['recv_npackets'] \
+                         - begin_sample['interfaces'][i]['recv_npackets']
+        print_delta(sample_delta(begin_sample, end_sample))
+    print('{}%'.format(recv_npackets / send_npackets * 100))
+    return recv_npackets / send_npackets
+
 
 print('Current Ticks:', read_reg(REGID_TICKS))
 print('Scratch:', read_reg(REGID_SCRATCH))
@@ -293,41 +352,32 @@ time.sleep(1.0)
 end_ticks = read_reg(REGID_TICKS)
 print('Estimated Frequency:', end_ticks - begin_ticks, 'Hz')
 
+set_interface(0, False, mac='54:57:44:32:30:30')
+set_interface(1, False, mac='54:57:44:32:30:31')
+set_interface(2, False, mac='54:57:44:32:30:32')
+set_interface(3, False, mac='54:57:44:32:30:33')
+
+set_interface(0, gateway='2a0e:aa06:497::1')
+set_interface(1, gateway='2a0e:aa06:497:1::1')
+set_interface(2, gateway='2a0e:aa06:497:2::1')
+set_interface(3, gateway='2a0e:aa06:497:3::1')
+set_interface(0, True, '2a0e:aa06:497::2', '2a0e:aa06:497:1::2', 46 + 14, 0)
+set_interface(1, True, '2a0e:aa06:497:1::2', '2a0e:aa06:497::2', 46 + 14, 0)
+set_interface(2, True, '2a0e:aa06:497:2::2', '2a0e:aa06:497:3::2', 46 + 14, 0)
+set_interface(3, True, '2a0e:aa06:497:3::2', '2a0e:aa06:497:2::2', 46 + 14, 0)
+
+test_all()
+
 set_interface(0, False)
 set_interface(1, False)
 set_interface(2, False)
 set_interface(3, False)
 
-# set_interface(0, True, '54:57:44:32:30:30', '54:57:44:32:30:31',
-#               '2a0e:aa06:497::1', '2a0e:aa06:497:1::1', 46 + 14, 0)
-# set_interface(1, True, '54:57:44:32:30:31', '54:57:44:32:30:30',
-#               '2a0e:aa06:497:1::1', '2a0e:aa06:497::1', 46 + 14, 0)
-# set_interface(2, True, '54:57:44:32:30:32', '54:57:44:32:30:33',
-#               '2a0e:aa06:497:2::1', '2a0e:aa06:497:3::1', 46 + 14, 0)
-# set_interface(3, True, '54:57:44:32:30:33', '54:57:44:32:30:32',
-#               '2a0e:aa06:497:3::1', '2a0e:aa06:497:2::1', 46 + 14, 0)
-# set_interface(3, True, '54:57:44:32:30:33', '00:12:1e:5e:40:22',
-#               '2001:250:200:7::2', '2a0e:aa06:496:2::1', 46 + 14, 125000)
+print('Press ENTER to test various destination IP addresses...')
+input()
+print('Testing various destination IP addresses...')
 
-set_interface(0, True, '54:57:44:32:30:30', '54:57:44:32:5f:30',
-              '2a0e:aa06:491::2', '2a0e:aa06:491:1::2', 46 + 14, 0)
-set_interface(1, True, '54:57:44:32:30:31', '54:57:44:32:5f:31',
-              '2a0e:aa06:491:1::2', '2a0e:aa06:491::2', 46 + 14, 0)
-set_interface(2, True, '54:57:44:32:30:32', '54:57:44:32:5f:32',
-              '2a0e:aa06:491:2::2', '2a0e:aa06:491:3::2', 46 + 14, 0)
-set_interface(3, True, '54:57:44:32:30:33', '54:57:44:32:5f:33',
-              '2a0e:aa06:491:3::2', '2a0e:aa06:491:2::2', 46 + 14, 0)
-
-# set_interface(0, True, '54:57:44:32:30:30', '54:57:44:32:5f:30',
-#               '2a0e:aa06:497::2', '2a0e:aa06:497:1::2', 46 + 14, 0)
-# set_interface(1, True, '54:57:44:32:30:31', '54:57:44:32:5f:31',
-#               '2a0e:aa06:497:1::2', '2a0e:aa06:497::2', 46 + 14, 0)
-# set_interface(2, True, '54:57:44:32:30:32', '54:57:44:32:5f:32',
-#               '2a0e:aa06:497:2::2', '2a0e:aa06:497:3::2', 46 + 14, 0)
-# set_interface(3, True, '54:57:44:32:30:33', '54:57:44:32:5f:33',
-#               '2a0e:aa06:497:3::2', '2a0e:aa06:497:2::2', 46 + 14, 0)
-
-test_all()
+test_ip()
 
 set_interface(0, False)
 set_interface(1, False)

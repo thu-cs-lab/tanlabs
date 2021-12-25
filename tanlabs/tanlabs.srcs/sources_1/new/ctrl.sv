@@ -387,10 +387,10 @@ module ctrl
                         REGID_CONF_ENABLE: config_reg.conf[ifaceid].enable <= regvalue;
                         REGID_CONF_MAC: config_reg.conf[ifaceid].mac <= regvalue_hton;
                         REGID_CONF_MAC_DST: config_reg.conf[ifaceid].mac_dst <= regvalue_hton;
-                        REGID_CONF_IP_SRC_HI: config_reg.conf[ifaceid].ip_src[63:0] <= regvalue_hton;
-                        REGID_CONF_IP_SRC_LO: config_reg.conf[ifaceid].ip_src[127:64] <= regvalue_hton;
-                        REGID_CONF_IP_DST_HI: config_reg.conf[ifaceid].ip_dst[63:0] <= regvalue_hton;
-                        REGID_CONF_IP_DST_LO: config_reg.conf[ifaceid].ip_dst[127:64] <= regvalue_hton;
+                        REGID_CONF_IP_SRC_HI: config_reg.conf[ifaceid].ip_src_hi <= regvalue_hton;
+                        REGID_CONF_IP_SRC_LO: config_reg.conf[ifaceid].ip_src <= {regvalue_hton, config_reg.conf[ifaceid].ip_src_hi};
+                        REGID_CONF_IP_DST_HI: config_reg.conf[ifaceid].ip_dst_hi <= regvalue_hton;
+                        REGID_CONF_IP_DST_LO: config_reg.conf[ifaceid].ip_dst <= {regvalue_hton, config_reg.conf[ifaceid].ip_dst_hi};
                         REGID_CONF_PACKET_LEN: config_reg.conf[ifaceid].packet_len <= regvalue;
                         REGID_CONF_GAP_LEN: config_reg.conf[ifaceid].gap_len <= regvalue;
                         default:
