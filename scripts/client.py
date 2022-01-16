@@ -287,7 +287,7 @@ def test_all(name='results'):
             print('Packet Length:', packet_len)
             d = test()
             print_delta(d)
-            f.write('{},{},{}\n'.format(packet_len, d['recv_bps'], d['recv_latency']))
+            f.write('{},{},{}\n'.format(packet_len, d['recv_bps'] / 1e9, d['recv_latency'] * 1e6))
 
     sb.set_theme(style='whitegrid', font='DejaVu Serif', font_scale=1.2)
     data = pandas.read_csv(f'{name}.csv')
@@ -295,7 +295,7 @@ def test_all(name='results'):
                    x='Packet Length', y='Bandwidth',
                    ci=None, palette='dark', legend=False, alpha=0.75, height=5)
     g.despine(left=True)
-    g.set_axis_labels('Packet Length (bytes)', 'Bandwidth (bps)')
+    g.set_axis_labels('Packet Length (bytes)', 'Bandwidth (Gbps)')
     g.set_xticklabels(rotation=0, horizontalalignment='center')
     g.fig.tight_layout()
     g.savefig(f'{name}-bandwidth.pdf')
@@ -304,7 +304,7 @@ def test_all(name='results'):
                    x='Packet Length', y='Latency',
                    ci=None, palette='dark', legend=False, alpha=0.75, height=5)
     g.despine(left=True)
-    g.set_axis_labels('Packet Length (bytes)', 'Latency (s)')
+    g.set_axis_labels('Packet Length (bytes)', 'Latency (us)')
     g.set_xticklabels(rotation=0, horizontalalignment='center')
     g.fig.tight_layout()
     g.savefig(f'{name}-latency.pdf')
