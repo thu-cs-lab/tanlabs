@@ -38,7 +38,7 @@ typedef struct packed
     logic dont_touch;  // Do not touch this beat!
 
     // Drop the next frame? It is useful when you need to shrink a frame
-    // (e.g., replace an IPv4 packet to an ARP request).
+    // (e.g., replace an IPv6 packet to an ND solicitation).
     // You can do so by setting both last and drop_next.
     logic drop_next;
 
