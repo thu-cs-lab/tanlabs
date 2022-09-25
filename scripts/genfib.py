@@ -3,6 +3,7 @@
 import ipaddress
 import json
 import mrtparse
+import tqdm
 import random
 
 interfaces = {}
@@ -12,57 +13,58 @@ def rand_interface(nexthop):
         interfaces[nexthop] = random.randint(0, 3)
     return interfaces[nexthop]
 
+def find_path_attribute(path, required_attr):
+    for attr in path['path_attributes']:
+        if required_attr in attr['type'].values():
+            return attr
+    return None
+
 def cmp_path(a, b):
-    assert a['path_attributes'][1]['type'][1] == 'AS_PATH'
-    assert b['path_attributes'][1]['type'][1] == 'AS_PATH'
-    if a['path_attributes'][1]['length'] < b['path_attributes'][1]['length']:
+    as_path_a = find_path_attribute(a, 'AS_PATH')
+    as_path_b = find_path_attribute(b, 'AS_PATH')
+    if as_path_a['value'][0]['length'] < as_path_b['value'][0]['length']:
         return True
-    elif a['path_attributes'][1]['length'] > b['path_attributes'][1]['length']:
+    elif as_path_a['value'][0]['length'] > as_path_b['value'][0]['length']:
         return False
     return a['peer_index'] < b['peer_index']
 
 rib = []
-for e in mrtparse.Reader('./scripts/rib.20211221.0000.bz2'):
-    if e.data['type'][1] != 'TABLE_DUMP_V2' or e.data['subtype'][1] != 'RIB_IPV6_UNICAST':
-        print(e.data['subtype'][1])
+for e in tqdm.tqdm(mrtparse.Reader('./rib.20220901.0000.bz2')):
+    if 'TABLE_DUMP_V2' not in e.data['type'].values() \
+       or 'RIB_IPV6_UNICAST' not in e.data['subtype'].values():
+        print(e.data['subtype'])
         print(json.dumps(e.data, indent=2))
         continue
-    if e.data['prefix_length'] > 48:
+    if e.data['length'] > 48:
         continue
     if rib:
         ipa = ipaddress.IPv6Address(rib[-1]['prefix'])
         ipb = ipaddress.IPv6Address(e.data['prefix'])
-        assert ipa < ipb or (ipa == ipb and rib[-1]['prefix_length'] <= e.data['prefix_length'])
+        assert ipa < ipb or (ipa == ipb and rib[-1]['length'] <= e.data['length'])
     # dedup
     if rib and rib[-1]['prefix'] == e.data['prefix'] \
-       and rib[-1]['prefix_length'] == e.data['prefix_length']:
+       and rib[-1]['length'] == e.data['length']:
         rib[-1]['rib_entries'].extend(e.data['rib_entries'])
-        print('{}/{} dup!'.format(e.data['prefix'], e.data['prefix_length']))
+        print('{}/{} dup!'.format(e.data['prefix'], e.data['length']))
     else:
         rib.append(e.data)
-    if len(rib) % 1000 == 0:
-        print(len(rib))
 
 lines = []
 prefixlen_count = [0] * 129
-for e in rib:
+for e in tqdm.tqdm(rib):
     min_path = e['rib_entries'][0]
     for path in e['rib_entries']:
         if cmp_path(path, min_path):
             min_path = path
-    nexthop = None
-    for attr in min_path['path_attributes']:
-        if attr['type'][1] == 'MP_REACH_NLRI':
-            nexthop = attr['value']['next_hop'][0]
-    assert nexthop is not None
-    lines.append('{} {} {} {}\n'.format(e['prefix'], e['prefix_length'],
+    nexthop = find_path_attribute(min_path, 'MP_REACH_NLRI')['value']['next_hop'][0]
+    lines.append('{} {} {} {}\n'.format(e['prefix'], e['length'],
                                         nexthop, rand_interface(nexthop)))
-    prefixlen_count[e['prefix_length']] += 1
-    if len(lines) % 1000 == 0:
-        print(len(lines))
+    prefixlen_count[e['length']] += 1
 
-for prefixlen, count in enumerate(prefixlen_count):
-    print(prefixlen, count)
+with open('prefixlen.csv', 'w') as f:
+    for prefixlen, count in enumerate(prefixlen_count):
+        print(prefixlen, count)
+        f.write(f'{prefixlen},{count}\n')
 
 random.shuffle(lines)
 
