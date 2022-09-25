@@ -16,6 +16,7 @@ from scapy.layers.inet import *
 from scapy.layers.inet6 import *
 from scapy.layers.rip import *
 from scapy.contrib.ripng import *
+import binascii
 import sys
 import struct
 
@@ -39,23 +40,25 @@ if SEND_FRAMES:
 
 # You may need to change these IP addresses.
 # The following configuration assumes that
-#   1. The IP address of Interface 0 of the router is prefix:0::1/64.
-#   2. The IP address of Interface 1 of the router is prefix:1::1/64.
-#   3. The IP address of Interface 2 of the router is prefix:2::1/64.
-#   4. The IP address of Interface 3 of the router is prefix:3::1/64.
-#   5. There exists a 2000::/3 route (not default route), and its next hop is Interface 3, prefix:3::2.
+#   1. The IP addresses of Interface 0 of the router are link-local and prefix:0::1/64.
+#   2. The IP addresses of Interface 1 of the router are link-local and prefix:1::1/64.
+#   3. The IP addresses of Interface 2 of the router are link-local and prefix:2::1/64.
+#   4. The IP addresses of Interface 3 of the router are link-local and prefix:3::1/64.
+#   5. There exists a 2000::/3 route (not default route), and its next hop is Interface 3, TESTER3.
 IP_PREFIX = '2a0e:aa06:497:'
 IP_TESTER0 = IP_PREFIX + '0::2'
 IP_TESTER1 = IP_PREFIX + '1::2'
-IP_DUT0 = IP_PREFIX + '0::1'  # Device under test.
-IP_DUT1 = IP_PREFIX + '1::1'
-IP_DUT3 = IP_PREFIX + '3::1'
-IP_DEFAULT_ROUTE = IP_PREFIX + '3::2'  # The IP address of the default route.
-IP_TEST_NDP = IP_PREFIX + '0:8000::1'
+IP_DUT0 = 'fe80::5657:44ff:fe32:5f30'  # Device under test.
+IP_DUT0_GUA = IP_PREFIX + '0::1'
+IP_DUT1 = 'fe80::5657:44ff:fe32:5f31'
+IP_DUT3 = 'fe80::5657:44ff:fe32:5f33'
+IP_DEFAULT_ROUTE = 'fe80::5645:53ff:fe54:5f33'  # The IP address of the default route.
+IP_TEST_NDP = 'fe80::8888'
 IP_TEST_DST = '2402:f000::1'  # Forward destination. Route should exist.
 IP_TEST_DST_NO_MAC = IP_PREFIX + '0::100'  # Forward destination. Route should exist. MAC address should not exist.
 IP_TEST_DST_NO_ROUTE = 'fd00::1'  # Forward destination. Route should not exist.
 IP_RIP = 'ff02::9'  # RIP multicast group address.
+INTERFACES = [f'tanlabs-veth{i}' for i in range(4)]
 
 # frames.txt format:
 # <Ingress Interface ID> <Frame Length> <Frame Data...>
@@ -75,7 +78,14 @@ def write_frame(iface, f):
   fout.write('\n')
 
   if SEND_FRAMES:
-    sendp(f, iface='tanlabs-veth{}'.format(iface))
+    sendp(f, iface=INTERFACES[iface])
+
+
+def getll(mac):
+  data = binascii.a2b_hex(mac.replace(':', ''))
+  a = [0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, *data[:3], 0xff, 0xfe, *data[3:]]
+  a[8] ^= 0x02
+  return inet_ntop(socket.AF_INET6, a)
 
 
 def getnsma(a):
@@ -85,6 +95,11 @@ def getnsma(a):
 # Neighbor Solicitation test.
 write_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
+            ICMPv6ND_NS(tgt=IP_DUT0) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Solicitation test (use link-local address as source address).
+write_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=getll(MAC_TESTER0), dst=getnsma(IP_DUT0)) /
             ICMPv6ND_NS(tgt=IP_DUT0) / ICMPv6NDOptSrcLLAddr(lladdr=MAC_TESTER0))
 
 # Neighbor Solicitation test (unicast with sender's MAC).
@@ -101,6 +116,16 @@ write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
             IPv6(src=IP_TESTER0, dst=IP_DUT0) /
             ICMPv6ND_NA(R=0, S=1, O=1, tgt=IP_TESTER0) / ICMPv6NDOptDstLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Advertisement test (link-local address).
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
+            IPv6(src=getll(MAC_TESTER0), dst=IP_DUT0) /
+            ICMPv6ND_NA(R=0, S=1, O=1, tgt=getll(MAC_TESTER0)) / ICMPv6NDOptDstLLAddr(lladdr=MAC_TESTER0))
+
+# Neighbor Advertisement test (source != target).
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
+            IPv6(src=IP_TESTER0, dst=IP_DUT0) /
+            ICMPv6ND_NA(R=0, S=1, O=1, tgt=getll(MAC_TESTER0)) / ICMPv6NDOptDstLLAddr(lladdr=MAC_TESTER0))
 
 # Neighbor Advertisement test (without sender's MAC).
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
@@ -223,22 +248,46 @@ write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
             IPv6(src=IP_TESTER0, dst=IP_TEST_DST_NO_ROUTE, hlim=1) /
             UDP(sport=7, dport=7) / b'hello, 00010')
 
+# Packet to the router itself, GUA.
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
+            IPv6(src=IP_TESTER0, dst=IP_DUT0_GUA) /
+            UDP(sport=7, dport=7) / b'hello, 00011')
+
+# Packet to the router itself, hop-limit=1.
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
+            IPv6(src=IP_TESTER0, dst=IP_DUT0_GUA, hlim=1) /
+            UDP(sport=7, dport=7) / b'hello, 00012')
+
+# Packet to the router itself, hop-limit=0.
+write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
+            IPv6(src=IP_TESTER0, dst=IP_DUT0_GUA, hlim=0) /
+            UDP(sport=7, dport=7) / b'hello, 00013')
+
 # L2 garbage test.
-write_frame(0, Ether(b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00011'))
+write_frame(0, Ether(b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00014'))
 
 # L3 garbage test (IPv4).
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0, type='IPv4') /
-            b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00012')
+            b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00015')
 
 # L3 garbage test (ARP).
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0, type='ARP') /
-            b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00013')
+            b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00016')
 
 # L3 garbage test (IPv6).
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0, type='IPv6') /
-            b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00014')
+            b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00017')
 
 # RIP test.
+write_frame(1, Ether(src=MAC_TESTER1) /
+            IPv6(src=getll(MAC_TESTER1), dst=IP_RIP, hlim=1) /
+            UDP() /
+            RIPng() /
+            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
+            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
+            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
+
+# RIP test (bad, source address is GUA).
 write_frame(1, Ether(src=MAC_TESTER1) /
             IPv6(src=IP_TESTER1, dst=IP_RIP, hlim=1) /
             UDP() /
@@ -249,7 +298,7 @@ write_frame(1, Ether(src=MAC_TESTER1) /
 
 # RIP test (wrong checksum).
 write_frame(1, Ether(src=MAC_TESTER1) /
-            IPv6(src=IP_TESTER1, dst=IP_RIP, hlim=1) /
+            IPv6(src=getll(MAC_TESTER1), dst=IP_RIP, hlim=1) /
             UDP(chksum=0x2222) /
             RIPng() /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
@@ -258,7 +307,7 @@ write_frame(1, Ether(src=MAC_TESTER1) /
 
 # RIP test (no checksum, illegal in IPv6).
 write_frame(1, Ether(src=MAC_TESTER1) /
-            IPv6(src=IP_TESTER1, dst=IP_RIP, hlim=1) /
+            IPv6(src=getll(MAC_TESTER1), dst=IP_RIP, hlim=1) /
             UDP(chksum=0x0000) /
             RIPng() /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
