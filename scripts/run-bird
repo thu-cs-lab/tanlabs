@@ -6,5 +6,6 @@ cd $(dirname $(dirname $(readlink -f ${0})))
 mkdir -p run
 
 for ((i=0; i < ${NINTERFACES}; i++)) do
-    ip netns exec ${NETNS_PREFIX}${i} bird -d -c ./conf/bird-${i}.conf -s ./run/bird-${i}.ctl &
+    ip netns exec ${NETNS_PREFIX}${i} ${BIRD} -d -c ./conf/bird-${i}.conf -s ./run/bird-${i}.ctl &
+    sleep 0.2
 done
