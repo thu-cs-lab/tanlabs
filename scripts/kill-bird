@@ -1,0 +1,11 @@
+#!/bin/bash
+
+. $(dirname $(readlink -f ${0}))/conf
+
+cd $(dirname $(dirname $(readlink -f ${0})))
+
+BIRDC=birdc
+
+for ((i = 0; i < ${NINTERFACES}; i++)) do
+    echo down | ${BIRDC} -s ./run/bird-${i}.ctl
+done
