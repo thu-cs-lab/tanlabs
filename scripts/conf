@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export BIRD=/home/twd2/fpga/bird/bird
+export BIRD=bird
 export BASE_VLAN=256
 export CTRL_VLAN=$((${BASE_VLAN} + 4))
 export NINTERFACES=4

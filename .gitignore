@@ -19,3 +19,4 @@ run/
 in_frames.pcap
 out_frames.pcap
 __pycache__/
+results/

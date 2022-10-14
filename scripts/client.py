@@ -4,6 +4,7 @@ import binascii
 import datetime
 import ipaddress
 import json
+import os
 import pyroute2
 import random
 import re
@@ -15,6 +16,8 @@ import time
 import pandas
 import matplotlib.pyplot as plt
 import seaborn as sb
+
+DIR = os.path.dirname(os.path.realpath(__file__))
 
 SERVER_IP = '10.8.8.100'
 SERVER_PORT = 60000
@@ -54,6 +57,8 @@ REGID_RECV_NERROR = 14
 REGID_RECV_LATENCY = 15
 
 REGEX_ND = re.compile(r'Target link-layer address: ([0-9A-Fa-f:]+)\n')
+
+IFA_F_NODAD = 0x02
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.connect((SERVER_IP, SERVER_PORT))
@@ -125,7 +130,7 @@ def do_nd(netns, iface, ip):
     args = ['ip', 'netns', 'exec', netns, 'ndisc6', str(ip), iface]
     print(' '.join(args))
     out = ''
-    with subprocess.Popen(args, stdout=subprocess.PIPE) as p:
+    with subprocess.Popen(args, stdout=subprocess.PIPE, env={}) as p:
         out = p.stdout.read().decode()
     m = REGEX_ND.search(out)
     if not m:
@@ -147,8 +152,10 @@ def set_interface(iface, enable=None, ip_src=None, ip_dst=None, packet_len=None,
         with pyroute2.NetNS(cp_netns) as ip:
             dev = ip.link_lookup(ifname=cp_iface)[0]
             ip.flush_addr(index=dev)
-            ip.addr('add', index=dev, address='fe80::' + str(iface + 1), prefixlen=64)
-            ip.addr('add', index=dev, address=str(ip_src), prefixlen=64)  # FIXME: prefixlen
+            ip.addr('add', index=dev, address='fe80::fff' + str(iface + 1), prefixlen=64,
+                    flags=IFA_F_NODAD)
+            ip.addr('add', index=dev, address=str(ip_src), prefixlen=64,  # FIXME: prefixlen
+                    flags=IFA_F_NODAD)
     if ip_dst is not None:
         ip_raw = ensure_ip(ip_dst).packed
         write_reg_raw(regid_base + REGID_CONF_IP_DST_HI, ip_raw[:8])
@@ -299,6 +306,7 @@ def test_all(name='results'):
     g.set_xticklabels(rotation=0, horizontalalignment='center')
     g.fig.tight_layout()
     g.savefig(f'{name}-bandwidth.pdf')
+    g.savefig(f'{name}-bandwidth.png')
 
     g = sb.catplot(data=data, kind='bar',
                    x='Packet Length', y='Latency',
@@ -308,6 +316,7 @@ def test_all(name='results'):
     g.set_xticklabels(rotation=0, horizontalalignment='center')
     g.fig.tight_layout()
     g.savefig(f'{name}-latency.pdf')
+    g.savefig(f'{name}-latency.png')
 
 def test_ip(name='results'):
     set_interface(0, False, gap_len=int(SERVER_FREQ / 10000))
@@ -316,7 +325,7 @@ def test_ip(name='results'):
     set_interface(3, False, gap_len=int(SERVER_FREQ / 10000))
 
     interfaces = [[] for _ in range(NINTERFACES)]
-    with open('./conf/testip.txt', 'r') as f:
+    with open(os.path.dirname(DIR) + '/conf/testip.txt', 'r') as f:
         for l in f:
             if not l.strip():
                 continue
@@ -341,8 +350,9 @@ def test_ip(name='results'):
         recv_npackets += end_sample['interfaces'][i]['recv_npackets'] \
                          - begin_sample['interfaces'][i]['recv_npackets']
         print_delta(sample_delta(begin_sample, end_sample))
-    print('{}%'.format(recv_npackets / send_npackets * 100))
-    return recv_npackets / send_npackets
+    ratio = recv_npackets / send_npackets if send_npackets else 1.0
+    print('{}%'.format(ratio * 100))
+    return ratio
 
 
 print('Current Ticks:', read_reg(REGID_TICKS))
