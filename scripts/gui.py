@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 
+import os
+import subprocess
 import wx
+# from client import *
+
+DIR = os.path.dirname(os.path.realpath(__file__))
+print(DIR)
+
+def exec_cmd(script, *args):
+    print('<<<<<<', ' '.join([script, *args]))
+    subprocess.Popen([DIR + '/' + script, *args])
+
+def handle_bird_run(e):
+    exec_cmd('run-bird')
+
+def handle_bird_kill(e):
+    exec_cmd('kill-bird')
 
 class MainFrame(wx.Frame):
     def get_text(self, pnl, text):
@@ -33,8 +49,10 @@ class MainFrame(wx.Frame):
         left_sizer.Add(bird_ctrl_sizer, wx.SizerFlags().Border(wx.TOP).Expand())
         bird_run = wx.Button(pnl, label='Run (&R)')
         bird_ctrl_sizer.Add(bird_run, wx.SizerFlags(1).Border().Expand())
+        bird_run.Bind(wx.EVT_BUTTON, handle_bird_run)
         bird_kill = wx.Button(pnl, label='Kill (&K)')
         bird_ctrl_sizer.Add(bird_kill, wx.SizerFlags(1).Border().Expand())
+        bird_kill.Bind(wx.EVT_BUTTON, handle_bird_kill)
 
         network_config_sizer = wx.StaticBoxSizer(wx.VERTICAL, pnl, 'Network Config')
         left_sizer.Add(network_config_sizer, wx.SizerFlags().Border(wx.TOP).Expand())
@@ -124,14 +142,14 @@ class MainFrame(wx.Frame):
         bandwidth = wx.StaticBitmap(pnl, size=wx.Size(300, 300))
         bandwidth_sizer.Add(bandwidth, wx.SizerFlags(1).Border().Expand())
         bandwidth.SetScaleMode(wx.StaticBitmap.ScaleMode.Scale_AspectFit)
-        bandwidth.SetBitmap(wx.BitmapBundle(wx.Bitmap('../1.png')))
+        bandwidth.SetBitmap(wx.BitmapBundle(wx.Bitmap(DIR + '/../1.png')))
 
         latency_sizer = wx.StaticBoxSizer(wx.HORIZONTAL, pnl, 'Latency')
         right_sizer.Add(latency_sizer, wx.SizerFlags(1).Border(wx.TOP).Expand())
         latency = wx.StaticBitmap(pnl, size=wx.Size(300, 300))
         latency_sizer.Add(latency, wx.SizerFlags(1).Border().Expand())
         latency.SetScaleMode(wx.StaticBitmap.ScaleMode.Scale_AspectFit)
-        latency.SetBitmap(wx.BitmapBundle(wx.Bitmap('../1.png')))
+        latency.SetBitmap(wx.BitmapBundle(wx.Bitmap(DIR + '/../1.png')))
 
         self.CreateStatusBar()
         self.SetStatusText('Welcome to Router Tester!')
@@ -144,4 +162,3 @@ if __name__ == '__main__':
     frm = MainFrame(None, title='Router Tester')
     frm.Show()
     app.MainLoop()
-
