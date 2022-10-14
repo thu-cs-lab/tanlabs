@@ -15,11 +15,12 @@ module tanlabs(
     // +-+-+-+-+
     input [3:0] sfp_rx_p,
     input [3:0] sfp_rx_n,
+    input [3:0] sfp_los,
     output wire [3:0] sfp_tx_disable,
     output wire [3:0] sfp_tx_p,
     output wire [3:0] sfp_tx_n,
-    output wire [7:0] sfp_rs,
     output wire [3:0] sfp_led,
+    output wire [3:0] sfp_led2,
 
     // ETH1 RGMII
     input rgmii1_rxc,
@@ -29,11 +30,9 @@ module tanlabs(
     output wire rgmii1_tx_ctl,
     output wire [3:0] rgmii1_txd,
     output wire mdc,
-    inout wire mdio,
-    output wire eth_rstn
+    inout wire mdio //,
+    // output wire eth_rstn
 );
-
-    assign sfp_rs = 8'hff;
 
 //    wire [4:0] debug_ingress_interconnect_ready;
 //    wire debug_datapath_fifo_ready;
@@ -272,7 +271,7 @@ module tanlabs(
         .mdi(mdi),
         .mdo(mdo),
         .mdio_oe(mdio_oe),
-        .eth_rstn(eth_rstn)
+        .eth_rstn(/* eth_rstn */)
     );
 
     tri_mode_ethernet_mac_0 tri_mode_ethernet_mac_0_i(

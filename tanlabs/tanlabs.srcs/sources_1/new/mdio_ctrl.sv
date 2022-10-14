@@ -36,8 +36,8 @@ module mdio_ctrl(
     begin
         if (reset)
         begin
-            state <= ST_RESET;
-            ret_state <= ST_RESET;
+            state <= ST_HALT; //ST_RESET;
+            ret_state <= ST_HALT; //ST_RESET;
             delay_counter <= 0;
             send_counter <= 64;
             next_config <= ST_HALT;
