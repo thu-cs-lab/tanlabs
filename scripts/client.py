@@ -285,7 +285,7 @@ def test(duration=1.0, sample_interval=0.1):
 
 def test_all(name='results'):
     with open(f'{name}.csv', 'w') as f:
-        f.write('Packet Length,Bandwidth,Latency\n')
+        f.write('Packet Length,Throughput,Latency\n')
         for packet_len in [46, 128, 256, 512, 1024, 1500]:
             for i in range(NINTERFACES):
                 set_interface(i, packet_len=packet_len + 14)
@@ -300,14 +300,14 @@ def plot_test_all(name='results'):
     sb.set_theme(style='whitegrid', font='DejaVu Serif', font_scale=1.2)
     data = pandas.read_csv(f'{name}.csv')
     g = sb.catplot(data=data, kind='bar',
-                   x='Packet Length', y='Bandwidth',
+                   x='Packet Length', y='Throughput',
                    errorbar=None, palette='dark', legend=False, alpha=0.75, height=5)
     g.despine(left=True)
-    g.set_axis_labels('Packet Length (bytes)', 'Bandwidth (Gbps)')
+    g.set_axis_labels('Packet Length (bytes)', 'Throughput (Gbps)')
     g.set_xticklabels(rotation=0, horizontalalignment='center')
     g.fig.tight_layout()
     for ext in ['pdf', 'png', 'svg']:
-        g.savefig(f'{name}-bandwidth.{ext}')
+        g.savefig(f'{name}-throughput.{ext}')
 
     g = sb.catplot(data=data, kind='bar',
                    x='Packet Length', y='Latency',
