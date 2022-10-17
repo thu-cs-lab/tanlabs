@@ -202,11 +202,11 @@ class MainFrame(wx.Frame):
         self.bird_route_count_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.handle_bird_route_count_timer)
 
-        bandwidth_sizer = wx.StaticBoxSizer(wx.HORIZONTAL, pnl, 'Bandwidth')
-        right_sizer.Add(bandwidth_sizer, wx.SizerFlags(1).Border(wx.TOP).Expand())
-        self.bandwidth = wx.StaticBitmap(pnl, size=wx.Size(300, 300))
-        bandwidth_sizer.Add(self.bandwidth, wx.SizerFlags(1).Border().Expand())
-        self.bandwidth.SetScaleMode(wx.StaticBitmap.ScaleMode.Scale_AspectFit)
+        throughput_sizer = wx.StaticBoxSizer(wx.HORIZONTAL, pnl, 'Throughput')
+        right_sizer.Add(throughput_sizer, wx.SizerFlags(1).Border(wx.TOP).Expand())
+        self.throughput = wx.StaticBitmap(pnl, size=wx.Size(300, 300))
+        throughput_sizer.Add(self.throughput, wx.SizerFlags(1).Border().Expand())
+        self.throughput.SetScaleMode(wx.StaticBitmap.ScaleMode.Scale_AspectFit)
 
         latency_sizer = wx.StaticBoxSizer(wx.HORIZONTAL, pnl, 'Latency')
         right_sizer.Add(latency_sizer, wx.SizerFlags(1).Border(wx.TOP).Expand())
@@ -361,7 +361,7 @@ class MainFrame(wx.Frame):
                 self.log(testpath, f.read())
             def update_plot():
                 plot_test_all(testpath)
-                self.bandwidth.SetBitmap(wx.BitmapBundle(wx.Bitmap(f'{testpath}-bandwidth.png')))
+                self.throughput.SetBitmap(wx.BitmapBundle(wx.Bitmap(f'{testpath}-throughput.png')))
                 self.latency.SetBitmap(wx.BitmapBundle(wx.Bitmap(f'{testpath}-latency.png')))
             wx.CallAfter(update_plot)
         self.go(worker)
