@@ -12,6 +12,60 @@ DIR = os.path.dirname(os.path.realpath(__file__))
 RESULTS_DIR = os.path.dirname(DIR) + '/results'
 if not os.path.isdir(RESULTS_DIR):
     os.mkdir(RESULTS_DIR)
+CONF_DIR = os.path.dirname(DIR) + '/conf'
+if not os.path.isdir(CONF_DIR):
+    os.mkdir(CONF_DIR)
+CONFIG_FILE = CONF_DIR + '/config.json'
+
+
+def save_config(config):
+    with open(CONFIG_FILE, 'w') as f:
+        f.write(json.dumps(config))
+
+
+def load_config():
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            config = json.loads(f.read())
+        config['test_name'] = str(config['test_name'])
+        my_ips = []
+        dut_ips = []
+        for i in range(NINTERFACES):
+            my_ips.append(str(ipaddress.IPv6Address(config['my_ips'][i])))
+            dut_ips.append(str(ipaddress.IPv6Address(config['dut_ips'][i])))
+        config['my_ips'] = my_ips
+        config['dut_ips'] = dut_ips
+        matrix = []
+        for i in range(NINTERFACES):
+            row = []
+            for j in range(NINTERFACES):
+                row.append(bool(config['matrix'][i][j]))
+            matrix.append(row)
+        config['matrix'] = matrix
+        config['skip'] = int(config['skip'])
+        config['count'] = int(config['count'])
+    except Exception as e:
+        print('Warning: failed to parse config json:', e)
+        config = {'test_name': 'Group 0',
+                  'my_ips': [], 'dut_ips': [],
+                  'matrix': [],
+                  'skip': 0, 'count': 1000}
+        my_ips = []
+        dut_ips = []
+        for i in range(NINTERFACES):
+            my_ips.append(str(ipaddress.IPv6Address(f'2a0e:aa06:497:{i}::2')))
+            dut_ips.append(str(ipaddress.IPv6Address(f'fe80::{i + 1}')))
+        config['my_ips'] = my_ips
+        config['dut_ips'] = dut_ips
+        matrix = []
+        for i in range(NINTERFACES):
+            row = []
+            for j in range(NINTERFACES):
+                row.append(i ^ j == 1)
+            matrix.append(row)
+        config['matrix'] = matrix
+        save_config(config)
+    return config
 
 
 class MainFrame(wx.Frame):
@@ -28,6 +82,8 @@ class MainFrame(wx.Frame):
         self.my_ips_parsed = None
         self.bird_is_running = False
 
+        self.config = load_config()
+
         pnl = wx.Panel(self)
         self.panel = pnl
 
@@ -41,7 +97,7 @@ class MainFrame(wx.Frame):
         test_name_sizer = wx.BoxSizer(wx.HORIZONTAL)
         left_sizer.Add(test_name_sizer, wx.SizerFlags().Expand())
         test_name_sizer.Add(self.get_text(pnl, 'Test Name: '), wx.SizerFlags().Center())
-        self.test_name = wx.TextCtrl(pnl, value='Group 0')
+        self.test_name = wx.TextCtrl(pnl, value=self.config['test_name'])
         test_name_sizer.Add(self.test_name, wx.SizerFlags(1).Expand())
 
         bird_ctrl_sizer = wx.StaticBoxSizer(wx.HORIZONTAL, pnl, 'Bird Control')
@@ -64,12 +120,12 @@ class MainFrame(wx.Frame):
             my_ip_sizers.append(my_ip_sizer)
             network_config_sizer.Add(my_ip_sizer, wx.SizerFlags().Border().Expand())
             my_ip_sizer.Add(self.get_text(pnl, f'My IP{i + 1}: '), wx.SizerFlags().Center())
-            my_ip = wx.TextCtrl(pnl, value=str(ipaddress.IPv6Address(f'2a0e:aa06:497:{i}::2')))
+            my_ip = wx.TextCtrl(pnl, value=self.config['my_ips'][i])
             self.my_ips.append(my_ip)
             my_ip_sizer.Add(my_ip, wx.SizerFlags(1).Expand())
 
             my_ip_sizer.Add(self.get_text(pnl, f' DUT IP{i + 1}: '), wx.SizerFlags().Center())
-            dut_ip = wx.TextCtrl(pnl, value=str(ipaddress.IPv6Address(f'fe80::{i + 1}')))
+            dut_ip = wx.TextCtrl(pnl, value=self.config['dut_ips'][i])
             self.dut_ips.append(dut_ip)
             my_ip_sizer.Add(dut_ip, wx.SizerFlags(1).Expand())
         self.network_config_apply = wx.Button(pnl, label='Apply (&N)')
@@ -94,7 +150,7 @@ class MainFrame(wx.Frame):
                 font = basic_test_check.GetFont()
                 font.PointSize = 12
                 basic_test_check.SetFont(font)
-                basic_test_check.SetValue(i ^ j == 1)
+                basic_test_check.SetValue(self.config['matrix'][i][j])
         self.basic_test_test = wx.Button(pnl, label='Test (&B)')
         basic_test_sizer.Add(self.basic_test_test, wx.SizerFlags().Border().Expand())
         self.basic_test_test.Bind(wx.EVT_BUTTON, self.handle_basic_test_test)
@@ -104,12 +160,12 @@ class MainFrame(wx.Frame):
         skip_sizer = wx.BoxSizer(wx.HORIZONTAL)
         fib_test_sizer.Add(skip_sizer, wx.SizerFlags().Border().Expand())
         skip_sizer.Add(self.get_text(pnl, 'Skip: '), wx.SizerFlags().Center())
-        self.skip = wx.TextCtrl(pnl, value='0')
+        self.skip = wx.TextCtrl(pnl, value=str(self.config['skip']))
         skip_sizer.Add(self.skip, wx.SizerFlags(1).Expand())
         count_sizer = wx.BoxSizer(wx.HORIZONTAL)
         fib_test_sizer.Add(count_sizer, wx.SizerFlags().Border().Expand())
         count_sizer.Add(self.get_text(pnl, 'Count: '), wx.SizerFlags().Center())
-        self.count = wx.TextCtrl(pnl, value='1000')
+        self.count = wx.TextCtrl(pnl, value=str(self.config['count']))
         count_sizer.Add(self.count, wx.SizerFlags(1).Expand())
         self.fib_test_config = wx.Button(pnl, label='Configure (&C)')
         fib_test_sizer.Add(self.fib_test_config, wx.SizerFlags().Border().Expand())
@@ -172,6 +228,9 @@ class MainFrame(wx.Frame):
         self.panel.Enable()
         wx.EndBusyCursor()
 
+    def save(self):
+        save_config(self.config)
+
     def go(self, func, enable_ui=True):
         def worker():
             func()
@@ -227,7 +286,7 @@ class MainFrame(wx.Frame):
                           wx.OK | wx.ICON_ERROR)
             self.test_name.SetFocus()
             return
-        testname = RESULTS_DIR + '/' + testname
+        testpath = RESULTS_DIR + '/' + testname
         self.my_ips_parsed = []
         self.dut_ips_parsed = []
         for i in range(NINTERFACES):
@@ -246,10 +305,14 @@ class MainFrame(wx.Frame):
                 self.dut_ips[i].SetFocus()
                 return
         self.disable()
-        self.log(testname, 'Apply Network Configuration')
+        self.config['test_name'] = testname
+        self.config['my_ips'] = list(map(str, self.my_ips_parsed))
+        self.config['dut_ips'] = list(map(str, self.dut_ips_parsed))
+        self.save()
+        self.log(testpath, 'Apply Network Configuration')
         for i in range(NINTERFACES):
-            self.log(testname, f'My IP{i + 1}: {self.my_ips_parsed[i]}')
-            self.log(testname, f'DUT IP{i + 1}: {self.dut_ips_parsed[i]}')
+            self.log(testpath, f'My IP{i + 1}: {self.my_ips_parsed[i]}')
+            self.log(testpath, f'DUT IP{i + 1}: {self.dut_ips_parsed[i]}')
         def worker():
             for i in range(NINTERFACES):
                 set_interface(i, ip_src=self.my_ips_parsed[i])
@@ -269,7 +332,7 @@ class MainFrame(wx.Frame):
                           wx.OK | wx.ICON_ERROR)
             self.test_name.SetFocus()
             return
-        testname = RESULTS_DIR + '/' + testname
+        testpath = RESULTS_DIR + '/' + testname
         matrix = []
         for i in range(NINTERFACES):
             row = []
@@ -277,25 +340,28 @@ class MainFrame(wx.Frame):
                 row.append(self.basic_test_check_matrix[i][j].IsChecked())
             matrix.append(row)
         self.disable()
+        self.config['test_name'] = testname
+        self.config['matrix'] = matrix
+        self.save()
         def worker():
-            self.log(testname, 'Begin Basic Forwarding Test')
+            self.log(testpath, 'Begin Basic Forwarding Test')
             for i in range(NINTERFACES):
                 for j in range(NINTERFACES):
                     if matrix[i][j]:
-                        self.log(testname, f'IF{i + 1} ({self.my_ips_parsed[i]}) -> IF{j + 1} ({self.my_ips_parsed[j]})')
+                        self.log(testpath, f'IF{i + 1} ({self.my_ips_parsed[i]}) -> IF{j + 1} ({self.my_ips_parsed[j]})')
             for i in range(NINTERFACES):
                 for j in range(NINTERFACES):
                     if matrix[i][j]:
                         set_interface(i, True, None, self.my_ips_parsed[j], 46 + 14, 0)
-            test_all(testname)
+            test_all(testpath)
             for i in range(NINTERFACES):
                 set_interface(i, False)
-            self.log(testname, 'End Basic Forwarding Test')
-            with open(f'{testname}.csv', 'r') as f:
-                self.log(testname, f.read())
+            self.log(testpath, 'End Basic Forwarding Test')
+            with open(f'{testpath}.csv', 'r') as f:
+                self.log(testpath, f.read())
             def update_plot():
-                self.bandwidth.SetBitmap(wx.BitmapBundle(wx.Bitmap(f'{testname}-bandwidth.png')))
-                self.latency.SetBitmap(wx.BitmapBundle(wx.Bitmap(f'{testname}-latency.png')))
+                self.bandwidth.SetBitmap(wx.BitmapBundle(wx.Bitmap(f'{testpath}-bandwidth.png')))
+                self.latency.SetBitmap(wx.BitmapBundle(wx.Bitmap(f'{testpath}-latency.png')))
             wx.CallAfter(update_plot)
         self.go(worker)
 
@@ -322,7 +388,7 @@ class MainFrame(wx.Frame):
                           wx.OK | wx.ICON_ERROR)
             self.test_name.SetFocus()
             return
-        testname = RESULTS_DIR + '/' + testname
+        testpath = RESULTS_DIR + '/' + testname
         try:
             skip = int(self.skip.GetLineText(0))
         except ValueError as err:
@@ -354,7 +420,11 @@ class MainFrame(wx.Frame):
             self.bird_run.SetFocus()
             return
         '''
-        self.log(testname, f'Configure {count} routes from {skip}')
+        self.config['test_name'] = testname
+        self.config['skip'] = skip
+        self.config['count'] = count
+        self.save()
+        self.log(testpath, f'Configure {count} routes from {skip}')
         self.exec_cmd('configure-routes', str(skip), str(count))
 
     def handle_fib_test_test(self, e):
