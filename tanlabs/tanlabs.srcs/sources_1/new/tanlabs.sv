@@ -19,8 +19,8 @@ module tanlabs(
     output wire [3:0] sfp_tx_disable,
     output wire [3:0] sfp_tx_p,
     output wire [3:0] sfp_tx_n,
-    output wire [3:0] sfp_led,
-    output wire [3:0] sfp_led2,
+    output wire [3:0] sfp_link,
+    output wire [3:0] sfp_act,
 
     // ETH1 RGMII
     input rgmii1_rxc,
@@ -34,12 +34,14 @@ module tanlabs(
     // output wire eth_rstn
 );
 
+    assign sfp_link = ~sfp_los;
+
 //    wire [4:0] debug_ingress_interconnect_ready;
 //    wire debug_datapath_fifo_ready;
 //    wire debug_egress_interconnect_ready;
 //    wire debug_rgmii_clk_conv_ready;
 
-    wire reset_in = ~RST;
+    wire reset_in = RST;
     wire locked;
     wire gtref_clk;  // 125MHz for the PHY/MAC IP core
     wire ref_clk;  // 200MHz for the PHY/MAC IP core
@@ -377,7 +379,7 @@ module tanlabs(
                  (eth_tx8_valid[0] & eth_tx8_ready[0]) | eth_rx8_valid[0]}),
         .out_led(out_led)
     );
-    assign sfp_led = out_led[3:0];
+    assign sfp_act = out_led[3:0];
 
     // Tester Interconnections
 

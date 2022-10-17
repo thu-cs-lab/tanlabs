@@ -12,7 +12,7 @@ set_property IOSTANDARD LVCMOS33 [get_ports RST]
 set_false_path -from [get_ports RST]
 
 # SFP+ 0
-set_property PACKAGE_PIN L15 [get_ports {sfp_los[0]}]
+set_property PACKAGE_PIN K14 [get_ports {sfp_los[0]}]
 set_property PACKAGE_PIN J14 [get_ports {sfp_tx_disable[0]}]
 set_property PACKAGE_PIN V5 [get_ports {sfp_rx_n[0]}]
 set_property PACKAGE_PIN V6 [get_ports {sfp_rx_p[0]}]
@@ -20,7 +20,7 @@ set_property PACKAGE_PIN T1 [get_ports {sfp_tx_n[0]}]
 set_property PACKAGE_PIN T2 [get_ports {sfp_tx_p[0]}]
 
 # SFP+ 1
-set_property PACKAGE_PIN K14 [get_ports {sfp_los[1]}]
+set_property PACKAGE_PIN L15 [get_ports {sfp_los[1]}]
 set_property PACKAGE_PIN K15 [get_ports {sfp_tx_disable[1]}]
 set_property PACKAGE_PIN AA3 [get_ports {sfp_rx_n[1]}]
 set_property PACKAGE_PIN AA4 [get_ports {sfp_rx_p[1]}]
@@ -28,7 +28,7 @@ set_property PACKAGE_PIN Y1 [get_ports {sfp_tx_n[1]}]
 set_property PACKAGE_PIN Y2 [get_ports {sfp_tx_p[1]}]
 
 # SFP+ 2
-set_property PACKAGE_PIN K13 [get_ports {sfp_los[2]}]
+set_property PACKAGE_PIN L12 [get_ports {sfp_los[2]}]
 set_property PACKAGE_PIN J12 [get_ports {sfp_tx_disable[2]}]
 set_property PACKAGE_PIN Y5 [get_ports {sfp_rx_n[2]}]
 set_property PACKAGE_PIN Y6 [get_ports {sfp_rx_p[2]}]
@@ -36,7 +36,7 @@ set_property PACKAGE_PIN V1 [get_ports {sfp_tx_n[2]}]
 set_property PACKAGE_PIN V2 [get_ports {sfp_tx_p[2]}]
 
 # SFP+ 3
-set_property PACKAGE_PIN L12 [get_ports {sfp_los[3]}]
+set_property PACKAGE_PIN K13 [get_ports {sfp_los[3]}]
 set_property PACKAGE_PIN J13 [get_ports {sfp_tx_disable[3]}]
 set_property PACKAGE_PIN W3 [get_ports {sfp_rx_n[3]}]
 set_property PACKAGE_PIN W4 [get_ports {sfp_rx_p[3]}]
@@ -44,20 +44,22 @@ set_property PACKAGE_PIN U3 [get_ports {sfp_tx_n[3]}]
 set_property PACKAGE_PIN U4 [get_ports {sfp_tx_p[3]}]
 
 # SFP+ Port LEDs
-set_property PACKAGE_PIN E11 [get_ports {sfp_led[0]}]
-set_property PACKAGE_PIN C11 [get_ports {sfp_led[1]}]
-set_property PACKAGE_PIN K11 [get_ports {sfp_led[2]}]
-set_property PACKAGE_PIN H11 [get_ports {sfp_led[3]}]
-set_property PACKAGE_PIN F11 [get_ports {sfp_led2[0]}]
-set_property PACKAGE_PIN D11 [get_ports {sfp_led2[1]}]
-set_property PACKAGE_PIN L11 [get_ports {sfp_led2[2]}]
-set_property PACKAGE_PIN J11 [get_ports {sfp_led2[3]}]
+# D11 E11 J11 K11
+# C11 F11 H11 L11
+set_property PACKAGE_PIN D11 [get_ports {sfp_link[0]}]
+set_property PACKAGE_PIN C11 [get_ports {sfp_link[1]}]
+set_property PACKAGE_PIN J11 [get_ports {sfp_link[2]}]
+set_property PACKAGE_PIN H11 [get_ports {sfp_link[3]}]
+set_property PACKAGE_PIN E11 [get_ports {sfp_act[0]}]
+set_property PACKAGE_PIN F11 [get_ports {sfp_act[1]}]
+set_property PACKAGE_PIN K11 [get_ports {sfp_act[2]}]
+set_property PACKAGE_PIN L11 [get_ports {sfp_act[3]}]
 
 set_property IOSTANDARD LVCMOS33 [get_ports {sfp_los[*]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {sfp_tx_disable[*]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {sfp_rs[*]}]
-set_property IOSTANDARD LVCMOS33 [get_ports {sfp_led[*]}]
-set_property IOSTANDARD LVCMOS33 [get_ports {sfp_led2[*]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {sfp_link[*]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {sfp_act[*]}]
 
 # ETH1 RGMII
 set_property PACKAGE_PIN D26 [get_ports rgmii1_rxc]
