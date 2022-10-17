@@ -360,6 +360,7 @@ class MainFrame(wx.Frame):
             with open(f'{testpath}.csv', 'r') as f:
                 self.log(testpath, f.read())
             def update_plot():
+                plot_test_all(testpath)
                 self.bandwidth.SetBitmap(wx.BitmapBundle(wx.Bitmap(f'{testpath}-bandwidth.png')))
                 self.latency.SetBitmap(wx.BitmapBundle(wx.Bitmap(f'{testpath}-latency.png')))
             wx.CallAfter(update_plot)
