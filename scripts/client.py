@@ -296,27 +296,28 @@ def test_all(name='results'):
             print_delta(d)
             f.write('{},{},{}\n'.format(packet_len, d['recv_bps'] / 1e9, d['recv_latency'] * 1e6))
 
+def plot_test_all(name='results'):
     sb.set_theme(style='whitegrid', font='DejaVu Serif', font_scale=1.2)
     data = pandas.read_csv(f'{name}.csv')
     g = sb.catplot(data=data, kind='bar',
                    x='Packet Length', y='Bandwidth',
-                   ci=None, palette='dark', legend=False, alpha=0.75, height=5)
+                   errorbar=None, palette='dark', legend=False, alpha=0.75, height=5)
     g.despine(left=True)
     g.set_axis_labels('Packet Length (bytes)', 'Bandwidth (Gbps)')
     g.set_xticklabels(rotation=0, horizontalalignment='center')
     g.fig.tight_layout()
-    g.savefig(f'{name}-bandwidth.pdf')
-    g.savefig(f'{name}-bandwidth.png')
+    for ext in ['pdf', 'png', 'svg']:
+        g.savefig(f'{name}-bandwidth.{ext}')
 
     g = sb.catplot(data=data, kind='bar',
                    x='Packet Length', y='Latency',
-                   ci=None, palette='dark', legend=False, alpha=0.75, height=5)
+                   errorbar=None, palette='dark', legend=False, alpha=0.75, height=5)
     g.despine(left=True)
     g.set_axis_labels('Packet Length (bytes)', 'Latency (us)')
     g.set_xticklabels(rotation=0, horizontalalignment='center')
     g.fig.tight_layout()
-    g.savefig(f'{name}-latency.pdf')
-    g.savefig(f'{name}-latency.png')
+    for ext in ['pdf', 'png', 'svg']:
+        g.savefig(f'{name}-latency.{ext}')
 
 def test_ip(name='results'):
     set_interface(0, False, gap_len=int(SERVER_FREQ / 10000))
@@ -378,6 +379,7 @@ if __name__ == '__main__':
     set_interface(3, True, '2a0e:aa06:497:3::2', '2a0e:aa06:497:2::2', 46 + 14, 0)
 
     test_all()
+    plot_test_all()
 
     set_interface(0, False)
     set_interface(1, False)
