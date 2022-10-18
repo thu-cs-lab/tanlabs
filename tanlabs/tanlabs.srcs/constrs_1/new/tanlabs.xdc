@@ -82,6 +82,8 @@ set_property PACKAGE_PIN E23 [get_ports {rgmii1_txd[2]}]
 set_property PACKAGE_PIN F23 [get_ports {rgmii1_txd[3]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {rgmii1_txd[*]}]
 
+# Disable TXC delay in the IP core since the PHY has TX Delay enabled.
+set_property CLKOUT1_PHASE 0 [get_cells tri_mode_ethernet_mac_0_i/inst/tri_mode_ethernet_mac_support_clocking_i/mmcm_adv_inst]
 set_property SLEW FAST [get_ports rgmii1_txc]
 set_property SLEW FAST [get_ports rgmii1_tx_ctl]
 set_property SLEW FAST [get_ports {rgmii1_txd[*]}]
