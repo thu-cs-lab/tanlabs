@@ -138,6 +138,7 @@ module ctrl
 
     assign fifo_ready = state == ST_RECV || !fifo.valid;
 
+    integer i;
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
@@ -165,6 +166,11 @@ module ctrl
         end
         else
         begin
+            for (i = 0; i < 4; i = i + 1)
+            begin
+                config_reg.conf[i].set_ip_dst_ptr <= 1'b0;
+            end
+
             case (state)
             ST_RECV:
             begin
@@ -338,6 +344,9 @@ module ctrl
                         REGID_CONF_IP_DST_LO: regvalue <= {<<8{config_sel.ip_dst[127:64]}};
                         REGID_CONF_PACKET_LEN: regvalue <= config_sel.packet_len;
                         REGID_CONF_GAP_LEN: regvalue <= config_sel.gap_len;
+                        REGID_CONF_USE_VAR_IP_DST: regvalue <= config_sel.use_var_ip_dst;
+                        REGID_CONF_IP_DST_PTR_MASK: regvalue <= config_sel.ip_dst_ptr_mask;
+                        REGID_IP_DST_PTR: regvalue <= state_send_sel.ip_dst_ptr;
                         REGID_SEND_NBYTES: regvalue <= state_send_sel.nbytes;
                         REGID_SEND_NPACKETS: regvalue <= state_send_sel.npackets;
                         REGID_RECV_NBYTES: regvalue <= state_recv_sel.nbytes;
@@ -393,6 +402,13 @@ module ctrl
                         REGID_CONF_IP_DST_LO: config_reg.conf[ifaceid].ip_dst <= {regvalue_hton, config_reg.conf[ifaceid].ip_dst_hi};
                         REGID_CONF_PACKET_LEN: config_reg.conf[ifaceid].packet_len <= regvalue;
                         REGID_CONF_GAP_LEN: config_reg.conf[ifaceid].gap_len <= regvalue;
+                        REGID_CONF_USE_VAR_IP_DST: config_reg.conf[ifaceid].use_var_ip_dst <= regvalue;
+                        REGID_CONF_IP_DST_PTR_MASK: config_reg.conf[ifaceid].ip_dst_ptr_mask <= regvalue;
+                        REGID_IP_DST_PTR:
+                        begin
+                            config_reg.conf[ifaceid].set_ip_dst_ptr <= 1'b1;
+                            config_reg.conf[ifaceid].ip_dst_ptr <= regvalue;
+                        end
                         default:
                         begin
                             // No such writeable register.
@@ -469,6 +485,12 @@ module ctrl
             end
             endcase
             out.id <= ID;
+
+            for (i = 0; i < 4; i = i + 1)
+            begin
+                // TODO: BRAM
+                config_reg.conf[i].var_ip_dst <= {state_reg.send[i].ip_dst_ptr, state_reg.send[i].ip_dst_ptr};
+            end
         end
     end
 endmodule

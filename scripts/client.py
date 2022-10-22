@@ -48,13 +48,16 @@ REGID_CONF_IP_DST_HI = 5
 REGID_CONF_IP_DST_LO = 6
 REGID_CONF_PACKET_LEN = 7
 REGID_CONF_GAP_LEN = 8
-REGID_SEND_NBYTES = 9
-REGID_SEND_NPACKETS = 10
-REGID_RECV_NBYTES = 11
-REGID_RECV_NBYTES_L3 = 12
-REGID_RECV_NPACKETS = 13
-REGID_RECV_NERROR = 14
-REGID_RECV_LATENCY = 15
+REGID_CONF_USE_VAR_IP_DST = 9
+REGID_CONF_IP_DST_PTR_MASK = 10
+REGID_IP_DST_PTR = 11
+REGID_SEND_NBYTES = 12
+REGID_SEND_NPACKETS = 13
+REGID_RECV_NBYTES = 14
+REGID_RECV_NBYTES_L3 = 15
+REGID_RECV_NPACKETS = 16
+REGID_RECV_NERROR = 17
+REGID_RECV_LATENCY = 18
 
 REGEX_ND = re.compile(r'Target link-layer address: ([0-9A-Fa-f:]+)\n')
 
@@ -138,7 +141,8 @@ def do_nd(netns, iface, ip):
     return m.group(1)
 
 def set_interface(iface, enable=None, ip_src=None, ip_dst=None, packet_len=None, gap_len=None,
-                  mac=None, mac_dst=None, gateway=None):
+                  mac=None, mac_dst=None, gateway=None,
+                  use_var_ip_dst=None, ip_dst_ptr_mask=None, ip_dst_ptr=None):
     regid_base = (iface << REGID_IFACE_SHIFT) | (1 << REGID_IFACE_FLAG)
     cp_iface = IFACE_PREFIX + str(iface)
     cp_netns = NETNS_PREFIX + str(iface)
@@ -180,6 +184,12 @@ def set_interface(iface, enable=None, ip_src=None, ip_dst=None, packet_len=None,
         else:
             print(str(gateway), '->', gateway_mac)
         set_interface(iface, mac_dst=gateway_mac)
+    if use_var_ip_dst is not None:
+        write_reg(regid_base + REGID_CONF_USE_VAR_IP_DST, int(use_var_ip_dst))
+    if ip_dst_ptr_mask is not None:
+        write_reg(regid_base + REGID_CONF_IP_DST_PTR_MASK, int(ip_dst_ptr_mask))
+    if ip_dst_ptr is not None:
+        write_reg(regid_base + REGID_IP_DST_PTR, int(ip_dst_ptr))
     # Set enable at the end.
     if enable is not None:
         write_reg(regid_base + REGID_CONF_ENABLE, int(enable))
