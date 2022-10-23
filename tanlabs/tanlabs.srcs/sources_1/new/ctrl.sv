@@ -129,8 +129,9 @@ module ctrl
     wire [63:0] regvalue_hton = {<<8{regvalue}};
 
     wire [REGID_IFACE_WIDTH - 1:0] ifaceid = regid[REGID_IFACE_SHIFT +: REGID_IFACE_WIDTH];
+    config_reg_t confreg;
     interface_config_t config_sel;
-    assign config_sel = config_reg.conf[ifaceid];
+    assign config_sel = confreg.conf[ifaceid];
     interface_send_state_t state_send_sel;
     assign state_send_sel = state_reg_sample.send[ifaceid];
     interface_recv_state_t state_recv_sel;
@@ -139,6 +140,20 @@ module ctrl
     assign fifo_ready = state == ST_RECV || !fifo.valid;
 
     integer i;
+
+    wire [127:0] var_ip_dst [0:3];
+    reg [3:0] ip_dst_we;
+    wire [63:0] ip_dst_data [0:3];
+
+    always @ (*)
+    begin
+        for (i = 0; i < 4; i = i + 1)
+        begin
+            config_reg.conf[i] = confreg.conf[i];
+            config_reg.conf[i].var_ip_dst = var_ip_dst[i];
+        end
+    end
+
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
@@ -160,16 +175,19 @@ module ctrl
             out.id <= ID;
 
             scratch <= 0;
-            config_reg <= 0;
+            confreg <= 0;
             ticks_sample <= 0;
             state_reg_sample <= 0;
+
+            ip_dst_we <= 0;
         end
         else
         begin
             for (i = 0; i < 4; i = i + 1)
             begin
-                config_reg.conf[i].set_ip_dst_ptr <= 1'b0;
+                confreg.conf[i].set_ip_dst_ptr <= 1'b0;
             end
+            ip_dst_we <= 0;
 
             case (state)
             ST_RECV:
@@ -314,108 +332,132 @@ module ctrl
             ST_HANDLE_UDP:
             begin
                 $display("handle UDP");
-                // TODO: read/write registers
-                if (!is_write)
+                if (!regid[REGID_IP_DST_RAM_FLAG])
                 begin
-                    if (!regid[REGID_IFACE_FLAG])
+                    // Read / write registers.
+                    if (!is_write)
                     begin
-                        case (regid[0 +: REGID_IFACE_SHIFT])
-                        REGID_TICKS: regvalue <= ticks;
-                        REGID_SCRATCH: regvalue <= scratch;
-                        REGID_RESET_COUNTERS: regvalue <= config_reg.conf[0].reset_counters;
-                        REGID_TICKS_SAMPLE: regvalue <= ticks_sample;
-                        default:
+                        if (!regid[REGID_IFACE_FLAG])
                         begin
-                            // No such register.
-                            regid <= REGID_INVALID;
-                            regvalue <= 0;
+                            case (regid[0 +: REGID_REGID_WIDTH])
+                            REGID_TICKS: regvalue <= ticks;
+                            REGID_SCRATCH: regvalue <= scratch;
+                            REGID_RESET_COUNTERS: regvalue <= confreg.conf[0].reset_counters;
+                            REGID_TICKS_SAMPLE: regvalue <= ticks_sample;
+                            default:
+                            begin
+                                // No such register.
+                                regid <= REGID_INVALID;
+                                regvalue <= 0;
+                            end
+                            endcase
                         end
-                        endcase
+                        else
+                        begin
+                            case (regid[0 +: REGID_REGID_WIDTH])
+                            REGID_CONF_ENABLE: regvalue <= config_sel.enable;
+                            REGID_CONF_MAC: regvalue <= {<<8{16'd0, config_sel.mac}};
+                            REGID_CONF_MAC_DST: regvalue <= {<<8{16'd0, config_sel.mac_dst}};
+                            REGID_CONF_IP_SRC_HI: regvalue <= {<<8{config_sel.ip_src[63:0]}};
+                            REGID_CONF_IP_SRC_LO: regvalue <= {<<8{config_sel.ip_src[127:64]}};
+                            REGID_CONF_IP_DST_HI: regvalue <= {<<8{config_sel.ip_dst[63:0]}};
+                            REGID_CONF_IP_DST_LO: regvalue <= {<<8{config_sel.ip_dst[127:64]}};
+                            REGID_CONF_PACKET_LEN: regvalue <= config_sel.packet_len;
+                            REGID_CONF_GAP_LEN: regvalue <= config_sel.gap_len;
+                            REGID_CONF_USE_VAR_IP_DST: regvalue <= config_sel.use_var_ip_dst;
+                            REGID_CONF_IP_DST_PTR_MASK: regvalue <= config_sel.ip_dst_ptr_mask;
+                            REGID_IP_DST_PTR: regvalue <= state_send_sel.ip_dst_ptr;
+                            REGID_SEND_NBYTES: regvalue <= state_send_sel.nbytes;
+                            REGID_SEND_NPACKETS: regvalue <= state_send_sel.npackets;
+                            REGID_RECV_NBYTES: regvalue <= state_recv_sel.nbytes;
+                            REGID_RECV_NBYTES_L3: regvalue <= state_recv_sel.nbytes_l3;
+                            REGID_RECV_NPACKETS: regvalue <= state_recv_sel.npackets;
+                            REGID_RECV_NERROR: regvalue <= state_recv_sel.nerror;
+                            REGID_RECV_LATENCY: regvalue <= state_recv_sel.latency;
+                            default:
+                            begin
+                                // No such register.
+                                regid <= REGID_INVALID;
+                                regvalue <= 0;
+                            end
+                            endcase
+                        end
                     end
                     else
                     begin
-                        case (regid[0 +: REGID_IFACE_SHIFT])
-                        REGID_CONF_ENABLE: regvalue <= config_sel.enable;
-                        REGID_CONF_MAC: regvalue <= {<<8{16'd0, config_sel.mac}};
-                        REGID_CONF_MAC_DST: regvalue <= {<<8{16'd0, config_sel.mac_dst}};
-                        REGID_CONF_IP_SRC_HI: regvalue <= {<<8{config_sel.ip_src[63:0]}};
-                        REGID_CONF_IP_SRC_LO: regvalue <= {<<8{config_sel.ip_src[127:64]}};
-                        REGID_CONF_IP_DST_HI: regvalue <= {<<8{config_sel.ip_dst[63:0]}};
-                        REGID_CONF_IP_DST_LO: regvalue <= {<<8{config_sel.ip_dst[127:64]}};
-                        REGID_CONF_PACKET_LEN: regvalue <= config_sel.packet_len;
-                        REGID_CONF_GAP_LEN: regvalue <= config_sel.gap_len;
-                        REGID_CONF_USE_VAR_IP_DST: regvalue <= config_sel.use_var_ip_dst;
-                        REGID_CONF_IP_DST_PTR_MASK: regvalue <= config_sel.ip_dst_ptr_mask;
-                        REGID_IP_DST_PTR: regvalue <= state_send_sel.ip_dst_ptr;
-                        REGID_SEND_NBYTES: regvalue <= state_send_sel.nbytes;
-                        REGID_SEND_NPACKETS: regvalue <= state_send_sel.npackets;
-                        REGID_RECV_NBYTES: regvalue <= state_recv_sel.nbytes;
-                        REGID_RECV_NBYTES_L3: regvalue <= state_recv_sel.nbytes_l3;
-                        REGID_RECV_NPACKETS: regvalue <= state_recv_sel.npackets;
-                        REGID_RECV_NERROR: regvalue <= state_recv_sel.nerror;
-                        REGID_RECV_LATENCY: regvalue <= state_recv_sel.latency;
-                        default:
+                        regvalue <= 0;
+                        if (!regid[REGID_IFACE_FLAG])
                         begin
-                            // No such register.
-                            regid <= REGID_INVALID;
-                            regvalue <= 0;
+                            case (regid[0 +: REGID_REGID_WIDTH])
+                            REGID_SCRATCH: scratch <= regvalue;
+                            REGID_RESET_COUNTERS:
+                            begin
+                                confreg.conf[0].reset_counters <= regvalue[0];
+                                confreg.conf[1].reset_counters <= regvalue[0];
+                                confreg.conf[2].reset_counters <= regvalue[0];
+                                confreg.conf[3].reset_counters <= regvalue[0];
+                            end
+                            REGID_SAMPLE:
+                            begin
+                                ticks_sample <= ticks;
+                                state_reg_sample <= state_reg;
+                            end
+                            default:
+                            begin
+                                // No such writeable register.
+                                regid <= REGID_INVALID;
+                                regvalue <= 0;
+                            end
+                            endcase
                         end
-                        endcase
+                        else
+                        begin
+                            case (regid[0 +: REGID_REGID_WIDTH])
+                            REGID_CONF_ENABLE: confreg.conf[ifaceid].enable <= regvalue;
+                            REGID_CONF_MAC: confreg.conf[ifaceid].mac <= regvalue_hton;
+                            REGID_CONF_MAC_DST: confreg.conf[ifaceid].mac_dst <= regvalue_hton;
+                            REGID_CONF_IP_SRC_HI: confreg.conf[ifaceid].ip_src_hi <= regvalue_hton;
+                            REGID_CONF_IP_SRC_LO: confreg.conf[ifaceid].ip_src <= {regvalue_hton, confreg.conf[ifaceid].ip_src_hi};
+                            REGID_CONF_IP_DST_HI: confreg.conf[ifaceid].ip_dst_hi <= regvalue_hton;
+                            REGID_CONF_IP_DST_LO: confreg.conf[ifaceid].ip_dst <= {regvalue_hton, confreg.conf[ifaceid].ip_dst_hi};
+                            REGID_CONF_PACKET_LEN: confreg.conf[ifaceid].packet_len <= regvalue;
+                            REGID_CONF_GAP_LEN: confreg.conf[ifaceid].gap_len <= regvalue;
+                            REGID_CONF_USE_VAR_IP_DST: confreg.conf[ifaceid].use_var_ip_dst <= regvalue;
+                            REGID_CONF_IP_DST_PTR_MASK: confreg.conf[ifaceid].ip_dst_ptr_mask <= regvalue;
+                            REGID_IP_DST_PTR:
+                            begin
+                                confreg.conf[ifaceid].set_ip_dst_ptr <= 1'b1;
+                                confreg.conf[ifaceid].ip_dst_ptr <= regvalue;
+                            end
+                            default:
+                            begin
+                                // No such writeable register.
+                                regid <= REGID_INVALID;
+                                regvalue <= 0;
+                            end
+                            endcase
+                        end
                     end
                 end
                 else
                 begin
-                    regvalue <= 0;
+                    // Read / write IP dst RAM.
                     if (!regid[REGID_IFACE_FLAG])
                     begin
-                        case (regid[0 +: REGID_IFACE_SHIFT])
-                        REGID_SCRATCH: scratch <= regvalue;
-                        REGID_RESET_COUNTERS:
-                        begin
-                            config_reg.conf[0].reset_counters <= regvalue[0];
-                            config_reg.conf[1].reset_counters <= regvalue[0];
-                            config_reg.conf[2].reset_counters <= regvalue[0];
-                            config_reg.conf[3].reset_counters <= regvalue[0];
-                        end
-                        REGID_SAMPLE:
-                        begin
-                            ticks_sample <= ticks;
-                            state_reg_sample <= state_reg;
-                        end
-                        default:
-                        begin
-                            // No such writeable register.
-                            regid <= REGID_INVALID;
-                            regvalue <= 0;
-                        end
-                        endcase
+                        // No such register.
+                        regid <= REGID_INVALID;
+                        regvalue <= 0;
                     end
                     else
                     begin
-                        case (regid[0 +: REGID_IFACE_SHIFT])
-                        REGID_CONF_ENABLE: config_reg.conf[ifaceid].enable <= regvalue;
-                        REGID_CONF_MAC: config_reg.conf[ifaceid].mac <= regvalue_hton;
-                        REGID_CONF_MAC_DST: config_reg.conf[ifaceid].mac_dst <= regvalue_hton;
-                        REGID_CONF_IP_SRC_HI: config_reg.conf[ifaceid].ip_src_hi <= regvalue_hton;
-                        REGID_CONF_IP_SRC_LO: config_reg.conf[ifaceid].ip_src <= {regvalue_hton, config_reg.conf[ifaceid].ip_src_hi};
-                        REGID_CONF_IP_DST_HI: config_reg.conf[ifaceid].ip_dst_hi <= regvalue_hton;
-                        REGID_CONF_IP_DST_LO: config_reg.conf[ifaceid].ip_dst <= {regvalue_hton, config_reg.conf[ifaceid].ip_dst_hi};
-                        REGID_CONF_PACKET_LEN: config_reg.conf[ifaceid].packet_len <= regvalue;
-                        REGID_CONF_GAP_LEN: config_reg.conf[ifaceid].gap_len <= regvalue;
-                        REGID_CONF_USE_VAR_IP_DST: config_reg.conf[ifaceid].use_var_ip_dst <= regvalue;
-                        REGID_CONF_IP_DST_PTR_MASK: config_reg.conf[ifaceid].ip_dst_ptr_mask <= regvalue;
-                        REGID_IP_DST_PTR:
+                        if (!is_write)
                         begin
-                            config_reg.conf[ifaceid].set_ip_dst_ptr <= 1'b1;
-                            config_reg.conf[ifaceid].ip_dst_ptr <= regvalue;
+                            regvalue <= {<<8{ip_dst_data[ifaceid]}};
                         end
-                        default:
+                        else
                         begin
-                            // No such writeable register.
-                            regid <= REGID_INVALID;
-                            regvalue <= 0;
+                            ip_dst_we[ifaceid] <= 1'b1;
                         end
-                        endcase
                     end
                 end
                 state <= ST_PREPARE_CHECKSUM;
@@ -485,12 +527,26 @@ module ctrl
             end
             endcase
             out.id <= ID;
-
-            for (i = 0; i < 4; i = i + 1)
-            begin
-                // TODO: BRAM
-                config_reg.conf[i].var_ip_dst <= {state_reg.send[i].ip_dst_ptr, state_reg.send[i].ip_dst_ptr};
-            end
         end
     end
+
+    genvar j;
+    generate
+        for (j = 0; j < 4; j = j + 1)
+        begin
+            blk_mem_gen_ip_dst blk_mem_gen_ip_dst_i(
+                .clka(eth_clk),
+                .wea(1'b0),
+                .addra(state_reg.send[j].ip_dst_ptr & confreg.conf[j].ip_dst_ptr_mask),
+                .dina(128'd0),
+                .douta(var_ip_dst[j]),
+
+                .clkb(eth_clk),
+                .web(ip_dst_we[j]),
+                .addrb(regid[0 +: REGID_IP_DST_RAM_WIDTH]),
+                .dinb(regvalue_hton),
+                .doutb(ip_dst_data[j])
+            );
+        end
+    endgenerate
 endmodule

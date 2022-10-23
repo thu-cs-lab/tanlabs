@@ -160,6 +160,19 @@ localparam MY_MAC = 48'h303032445754;  // TWD200
 localparam MY_IP = 32'h6408080a;  // 10.8.8.100
 localparam MY_PORT = 16'h60ea;  // 60000
 
+/*
+   63 62          51  48  47       0
+  +--+--+-----------+---+---+-------+
+  |RW|GI| Reserved  |IF |RAM|ID/ADDR|
+  +--+--+-----------+---+---+-------+
+  RW: Read / Write
+  GI: Global / per-Interface
+  IF: InterFace id
+  RAM: is ip dst RAM address?
+  ID: register ID
+  ADDR: ip dst ram ADDRess
+*/
+
 // Global registers.
 localparam REGID_INVALID = 0;
 localparam REGID_TICKS = 1;
@@ -168,9 +181,12 @@ localparam REGID_RESET_COUNTERS = 3;
 localparam REGID_SAMPLE = 4;
 localparam REGID_TICKS_SAMPLE = 5;
 // Per-interface registers.
+localparam REGID_IFACE_FLAG = 62;
 localparam REGID_IFACE_WIDTH = ID_WIDTH;
-localparam REGID_IFACE_SHIFT = 8;
-localparam REGID_IFACE_FLAG = REGID_IFACE_SHIFT + REGID_IFACE_WIDTH;
+localparam REGID_IFACE_SHIFT = 48;
+localparam REGID_IP_DST_RAM_FLAG = 47;
+localparam REGID_REGID_WIDTH = 8;
+localparam REGID_IP_DST_RAM_WIDTH = 47;
 localparam REGID_CONF_ENABLE = 0;
 localparam REGID_CONF_MAC = 1;
 localparam REGID_CONF_MAC_DST = 2;
