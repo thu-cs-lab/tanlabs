@@ -254,6 +254,7 @@ module ingress_wrapper
             state <= ST_RECV_HEADER;
             interface_state <= 0;
             nbytes <= 0;
+            nbytes_l3 <= 0;
             error <= 1'b0;
             latency <= 0;
             remaining_bytes <= 0;

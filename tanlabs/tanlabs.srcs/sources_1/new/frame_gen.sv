@@ -89,6 +89,9 @@ module frame_gen
                 end
             end
         end
+        default:
+        begin
+        end
         endcase
 
         lfsr_ce = 1'b1;
@@ -120,6 +123,7 @@ module frame_gen
     begin
         if (reset)
         begin
+            state <= ST_SEND_HEADER;
             interface_state_reg <= 0;
             out <= 0;
             packet_len <= 0;

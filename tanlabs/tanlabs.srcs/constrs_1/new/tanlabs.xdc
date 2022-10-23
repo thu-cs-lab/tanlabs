@@ -1,6 +1,3 @@
-# Clocks
-set_property -dict {PACKAGE_PIN AA3 IOSTANDARD LVCMOS33} [get_ports clk_100M]
-
 # GTP clock 125MHz
 set_property PACKAGE_PIN D6 [get_ports gtrefclk_p]
 set_property PACKAGE_PIN D5 [get_ports gtrefclk_n]
