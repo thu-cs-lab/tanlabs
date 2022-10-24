@@ -32,6 +32,20 @@ module frame_gen
     end
     endfunction
 
+    wire [63:0] ip_dst_ptr;
+    reg lfsr_ip_dst_ptr_ce;
+    lfsr lfsr_ip_dst_ptr(
+        .clk(eth_clk),
+        .reset(reset),
+
+        .ce(lfsr_ip_dst_ptr_ce || interface_config.set_ip_dst_ptr),
+
+        .set(interface_config.set_ip_dst_ptr),
+        .i(interface_config.ip_dst_ptr),
+
+        .o(ip_dst_ptr)
+    );
+
     wire [63:0] random;
     reg lfsr_ce;
     lfsr lfsr_i(
@@ -55,12 +69,31 @@ module frame_gen
 
     state_t state;
 
+    interface_send_state_t interface_state_reg;
+
     reg [15:0] packet_len;
     reg [15:0] remaining_bytes;
     reg [63:0] gap_counter;
 
     always @ (*)
     begin
+        lfsr_ip_dst_ptr_ce = 1'b0;
+        case (state)
+        ST_SEND_HEADER:
+        begin
+            if (out_ready || !out.valid)
+            begin
+                if (interface_config.enable)
+                begin
+                    lfsr_ip_dst_ptr_ce = 1'b1;
+                end
+            end
+        end
+        default:
+        begin
+        end
+        endcase
+
         lfsr_ce = 1'b1;
         case (state)
         ST_SEND_HEADER:
@@ -81,13 +114,17 @@ module frame_gen
         begin
         end
         endcase
+
+        interface_state = interface_state_reg;
+        interface_state.ip_dst_ptr = ip_dst_ptr;
     end
 
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
         begin
-            interface_state <= 0;
+            state <= ST_SEND_HEADER;
+            interface_state_reg <= 0;
             out <= 0;
             packet_len <= 0;
             remaining_bytes <= 0;
@@ -104,8 +141,8 @@ module frame_gen
                     begin
                         out.valid <= 1'b0;
                         // count previous packet.
-                        interface_state.nbytes <= interface_state.nbytes + packet_len;
-                        interface_state.npackets <= interface_state.npackets + 1;
+                        interface_state_reg.nbytes <= interface_state_reg.nbytes + packet_len;
+                        interface_state_reg.npackets <= interface_state_reg.npackets + 1;
                     end
                     if (interface_config.enable)
                     begin
@@ -120,7 +157,14 @@ module frame_gen
                         out.data.payload.ip6.next_hdr <= PROTO_TEST;
                         out.data.payload.ip6.hop_limit <= 8'd64;
                         out.data.payload.ip6.src <= interface_config.ip_src;
-                        out.data.payload.ip6.dst <= interface_config.ip_dst;
+                        if (interface_config.use_var_ip_dst)
+                        begin
+                            out.data.payload.ip6.dst <= interface_config.var_ip_dst;
+                        end
+                        else
+                        begin
+                            out.data.payload.ip6.dst <= interface_config.ip_dst;
+                        end
                         out.data.payload.ip6.payload <= {random[7:0], ticks[15:8]};
                         out.keep <= len2keep(interface_config.packet_len);
                         packet_len <= interface_config.packet_len;
@@ -181,8 +225,8 @@ module frame_gen
                     if (out.valid)
                     begin
                         // count previous packet.
-                        interface_state.nbytes <= interface_state.nbytes + packet_len;
-                        interface_state.npackets <= interface_state.npackets + 1;
+                        interface_state_reg.nbytes <= interface_state_reg.nbytes + packet_len;
+                        interface_state_reg.npackets <= interface_state_reg.npackets + 1;
                     end
                     out.valid <= 1'b0;
                 end
@@ -200,7 +244,7 @@ module frame_gen
 
             if (interface_config.reset_counters)
             begin
-                interface_state <= 0;
+                interface_state_reg <= 0;
             end
         end
     end

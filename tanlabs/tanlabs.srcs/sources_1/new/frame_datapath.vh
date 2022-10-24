@@ -9,6 +9,7 @@ localparam VLAN_WIDTH = 8 * 4;
 
 typedef struct packed
 {
+    logic [63:0] ip_dst_ptr;
     logic [63:0] nbytes;
     logic [63:0] npackets;
 } interface_send_state_t;
@@ -34,6 +35,11 @@ typedef struct packed
     logic [127:0] ip_dst;
     logic [15:0] packet_len;
     logic [63:0] gap_len;
+    logic use_var_ip_dst;
+    logic [63:0] ip_dst_ptr_mask;
+    logic set_ip_dst_ptr;
+    logic [63:0] ip_dst_ptr;
+    logic [127:0] var_ip_dst;
 } interface_config_t;
 
 typedef struct packed
@@ -154,6 +160,19 @@ localparam MY_MAC = 48'h303032445754;  // TWD200
 localparam MY_IP = 32'h6408080a;  // 10.8.8.100
 localparam MY_PORT = 16'h60ea;  // 60000
 
+/*
+   63 62          51  48  47       0
+  +--+--+-----------+---+---+-------+
+  |RW|GI| Reserved  |IF |RAM|ID/ADDR|
+  +--+--+-----------+---+---+-------+
+  RW: Read / Write
+  GI: Global / per-Interface
+  IF: InterFace id
+  RAM: is ip dst RAM address?
+  ID: register ID
+  ADDR: ip dst ram ADDRess
+*/
+
 // Global registers.
 localparam REGID_INVALID = 0;
 localparam REGID_TICKS = 1;
@@ -162,9 +181,12 @@ localparam REGID_RESET_COUNTERS = 3;
 localparam REGID_SAMPLE = 4;
 localparam REGID_TICKS_SAMPLE = 5;
 // Per-interface registers.
+localparam REGID_IFACE_FLAG = 62;
 localparam REGID_IFACE_WIDTH = ID_WIDTH;
-localparam REGID_IFACE_SHIFT = 8;
-localparam REGID_IFACE_FLAG = REGID_IFACE_SHIFT + REGID_IFACE_WIDTH;
+localparam REGID_IFACE_SHIFT = 48;
+localparam REGID_IP_DST_RAM_FLAG = 47;
+localparam REGID_REGID_WIDTH = 8;
+localparam REGID_IP_DST_RAM_WIDTH = 47;
 localparam REGID_CONF_ENABLE = 0;
 localparam REGID_CONF_MAC = 1;
 localparam REGID_CONF_MAC_DST = 2;
@@ -174,13 +196,16 @@ localparam REGID_CONF_IP_DST_HI = 5;
 localparam REGID_CONF_IP_DST_LO = 6;
 localparam REGID_CONF_PACKET_LEN = 7;
 localparam REGID_CONF_GAP_LEN = 8;
-localparam REGID_SEND_NBYTES = 9;
-localparam REGID_SEND_NPACKETS = 10;
-localparam REGID_RECV_NBYTES = 11;
-localparam REGID_RECV_NBYTES_L3 = 12;
-localparam REGID_RECV_NPACKETS = 13;
-localparam REGID_RECV_NERROR = 14;
-localparam REGID_RECV_LATENCY = 15;
+localparam REGID_CONF_USE_VAR_IP_DST = 9;
+localparam REGID_CONF_IP_DST_PTR_MASK = 10;
+localparam REGID_IP_DST_PTR = 11;
+localparam REGID_SEND_NBYTES = 12;
+localparam REGID_SEND_NPACKETS = 13;
+localparam REGID_RECV_NBYTES = 14;
+localparam REGID_RECV_NBYTES_L3 = 15;
+localparam REGID_RECV_NPACKETS = 16;
+localparam REGID_RECV_NERROR = 17;
+localparam REGID_RECV_LATENCY = 18;
 
 function [DATAW_WIDTH - 1:0] expand_pattern;
     input [63:0] pattern;

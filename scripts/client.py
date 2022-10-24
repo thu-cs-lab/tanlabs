@@ -36,9 +36,12 @@ REGID_RESET_COUNTERS = 3
 REGID_SAMPLE = 4
 REGID_TICKS_SAMPLE = 5
 # Per-interface registers.
+REGID_IFACE_FLAG = 62
 REGID_IFACE_WIDTH = 3
-REGID_IFACE_SHIFT = 8
-REGID_IFACE_FLAG = REGID_IFACE_SHIFT + REGID_IFACE_WIDTH
+REGID_IFACE_SHIFT = 48
+REGID_IP_DST_RAM_FLAG = 47
+REGID_REGID_WIDTH = 8
+REGID_IP_DST_RAM_WIDTH = 47
 REGID_CONF_ENABLE = 0
 REGID_CONF_MAC = 1
 REGID_CONF_MAC_DST = 2
@@ -48,13 +51,16 @@ REGID_CONF_IP_DST_HI = 5
 REGID_CONF_IP_DST_LO = 6
 REGID_CONF_PACKET_LEN = 7
 REGID_CONF_GAP_LEN = 8
-REGID_SEND_NBYTES = 9
-REGID_SEND_NPACKETS = 10
-REGID_RECV_NBYTES = 11
-REGID_RECV_NBYTES_L3 = 12
-REGID_RECV_NPACKETS = 13
-REGID_RECV_NERROR = 14
-REGID_RECV_LATENCY = 15
+REGID_CONF_USE_VAR_IP_DST = 9
+REGID_CONF_IP_DST_PTR_MASK = 10
+REGID_IP_DST_PTR = 11
+REGID_SEND_NBYTES = 12
+REGID_SEND_NPACKETS = 13
+REGID_RECV_NBYTES = 14
+REGID_RECV_NBYTES_L3 = 15
+REGID_RECV_NPACKETS = 16
+REGID_RECV_NERROR = 17
+REGID_RECV_LATENCY = 18
 
 REGEX_ND = re.compile(r'Target link-layer address: ([0-9A-Fa-f:]+)\n')
 
@@ -104,6 +110,19 @@ def read_reg(regid):
 def write_reg(regid, regvalue):
     write_reg_raw(regid, struct.pack('>Q', regvalue))
 
+def read_ip_dst(iface, index):
+    regid_base = (iface << REGID_IFACE_SHIFT) \
+                 | (1 << REGID_IFACE_FLAG) | (1 << REGID_IP_DST_RAM_FLAG)
+    hi = read_reg_raw(regid_base + 2 * index)
+    lo = read_reg_raw(regid_base + 2 * index + 1)
+    return hi + lo
+
+def write_ip_dst(iface, index, addr):
+    regid_base = (iface << REGID_IFACE_SHIFT) \
+                 | (1 << REGID_IFACE_FLAG) | (1 << REGID_IP_DST_RAM_FLAG)
+    write_reg_raw(regid_base + 2 * index, addr[:8])
+    write_reg_raw(regid_base + 2 * index + 1, addr[8:])
+
 def ensure_mac(mac):
     if isinstance(mac, str):
         mac = binascii.a2b_hex(mac.replace(':', '').replace('-', ''))
@@ -138,7 +157,8 @@ def do_nd(netns, iface, ip):
     return m.group(1)
 
 def set_interface(iface, enable=None, ip_src=None, ip_dst=None, packet_len=None, gap_len=None,
-                  mac=None, mac_dst=None, gateway=None):
+                  mac=None, mac_dst=None, gateway=None,
+                  use_var_ip_dst=None, ip_dst_ptr_mask=None, ip_dst_ptr=None):
     regid_base = (iface << REGID_IFACE_SHIFT) | (1 << REGID_IFACE_FLAG)
     cp_iface = IFACE_PREFIX + str(iface)
     cp_netns = NETNS_PREFIX + str(iface)
@@ -180,6 +200,12 @@ def set_interface(iface, enable=None, ip_src=None, ip_dst=None, packet_len=None,
         else:
             print(str(gateway), '->', gateway_mac)
         set_interface(iface, mac_dst=gateway_mac)
+    if use_var_ip_dst is not None:
+        write_reg(regid_base + REGID_CONF_USE_VAR_IP_DST, int(use_var_ip_dst))
+    if ip_dst_ptr_mask is not None:
+        write_reg(regid_base + REGID_CONF_IP_DST_PTR_MASK, int(ip_dst_ptr_mask))
+    if ip_dst_ptr is not None:
+        write_reg(regid_base + REGID_IP_DST_PTR, int(ip_dst_ptr))
     # Set enable at the end.
     if enable is not None:
         write_reg(regid_base + REGID_CONF_ENABLE, int(enable))
@@ -369,10 +395,45 @@ if __name__ == '__main__':
     set_interface(2, False, mac='54:57:44:32:30:32')
     set_interface(3, False, mac='54:57:44:32:30:33')
 
-    set_interface(0, gateway='2a0e:aa06:497::1')
-    set_interface(1, gateway='2a0e:aa06:497:1::1')
-    set_interface(2, gateway='2a0e:aa06:497:2::1')
-    set_interface(3, gateway='2a0e:aa06:497:3::1')
+    #set_interface(0, gateway='2a0e:aa06:497::1')
+    #set_interface(1, gateway='2a0e:aa06:497:1::1')
+    #set_interface(2, gateway='2a0e:aa06:497:2::1')
+    #set_interface(3, gateway='2a0e:aa06:497:3::1')
+
+    regid_base = (0 << REGID_IFACE_SHIFT) | (1 << REGID_IFACE_FLAG)
+    write_reg(REGID_SAMPLE, 1)
+    print(hex(read_reg(regid_base + REGID_IP_DST_PTR)))
+    set_interface(0, use_var_ip_dst=True, ip_dst_ptr=0xfff, ip_dst_ptr_mask=0)
+    set_interface(1, use_var_ip_dst=True, ip_dst_ptr_mask=3)
+    print(hex(read_reg(regid_base + REGID_CONF_USE_VAR_IP_DST)))
+    write_reg(REGID_SAMPLE, 1)
+    print(hex(read_reg(regid_base + REGID_IP_DST_PTR)))
+    write_reg(REGID_SAMPLE, 1)
+    print(hex(read_reg(regid_base + REGID_IP_DST_PTR)))
+
+    write_ip_dst(0, 0, b'1abcdefg2abcdefg')
+    write_ip_dst(0, 1, b'3abcdefg4abcdefg')
+    write_ip_dst(1, 0, b'5abcdefg6abcdefg')
+    write_ip_dst(1, 1, b'7abcdefg8abcdefg')
+    print(read_ip_dst(0, 0))
+    print(read_ip_dst(0, 1))
+    print(read_ip_dst(1, 0))
+    print(read_ip_dst(1, 1))
+
+    set_interface(0, True, '2a0e:aa06:497::2', None, 46 + 14, 0)
+    set_interface(1, True, '2a0e:aa06:497:1::2', None, 46 + 14, 0)
+    set_interface(2, True, '2a0e:aa06:497:2::2', None, 46 + 14, 0)
+    set_interface(3, True, '2a0e:aa06:497:3::2', None, 46 + 14, 0)
+
+    input()
+    write_reg(REGID_SAMPLE, 1)
+    print(hex(read_reg(regid_base + REGID_IP_DST_PTR)))
+    set_interface(0, ip_dst_ptr_mask=1)
+    input()
+    set_interface(0, ip_dst_ptr_mask=3)
+    input()
+    exit(0)
+
     set_interface(0, True, '2a0e:aa06:497::2', '2a0e:aa06:497:1::2', 46 + 14, 0)
     set_interface(1, True, '2a0e:aa06:497:1::2', '2a0e:aa06:497::2', 46 + 14, 0)
     set_interface(2, True, '2a0e:aa06:497:2::2', '2a0e:aa06:497:3::2', 46 + 14, 0)

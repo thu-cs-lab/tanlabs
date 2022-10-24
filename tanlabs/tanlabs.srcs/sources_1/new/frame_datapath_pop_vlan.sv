@@ -16,18 +16,20 @@ module frame_datapath_pop_vlan
     input out_ready
 );
 
+    reg is_first;
+
     // Track frames and figure out when it is the first beat.
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
         begin
-            in.is_first <= 1'b1;
+            is_first <= 1'b1;
         end
         else
         begin
             if (in.valid && in_ready)
             begin
-                in.is_first <= in.last;
+                is_first <= in.last;
             end
         end
     end
@@ -67,7 +69,7 @@ module frame_datapath_pop_vlan
                 out0_reg.valid <= 1'b0;
                 out0_reg.dest <= leftover_dest;
                 out0_reg.drop <= leftover_drop;
-                if (in.is_first)
+                if (is_first)
                 begin
                     // Send previous frame's leftovers.
                     out0_reg.data <= {{VLAN_WIDTH{1'b0}}, leftover_data};
