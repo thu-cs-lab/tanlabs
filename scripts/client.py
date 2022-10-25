@@ -390,10 +390,10 @@ end_ticks = read_reg(REGID_TICKS)
 print('Estimated Frequency:', end_ticks - begin_ticks, 'Hz')
 
 if __name__ == '__main__':
-    set_interface(0, False, mac='54:57:44:32:30:30')
-    set_interface(1, False, mac='54:57:44:32:30:31')
-    set_interface(2, False, mac='54:57:44:32:30:32')
-    set_interface(3, False, mac='54:57:44:32:30:33')
+    set_interface(0, False, mac='8C-1F-64-69-10-01')
+    set_interface(1, False, mac='8C-1F-64-69-10-02')
+    set_interface(2, False, mac='8C-1F-64-69-10-03')
+    set_interface(3, False, mac='8C-1F-64-69-10-04')
 
     #set_interface(0, gateway='2a0e:aa06:497::1')
     #set_interface(1, gateway='2a0e:aa06:497:1::1')
