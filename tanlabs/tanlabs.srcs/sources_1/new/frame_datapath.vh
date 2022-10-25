@@ -156,7 +156,7 @@ localparam PROTO_UDP = 8'd17;
 localparam PROTO_TEST = 8'hfe;  // RFC 3692
 localparam UDP_PAYLOAD_MAGIC = 48'h323232445754;  // TWD222
 
-localparam MY_MAC = 48'h303032445754;  // TWD200
+localparam MY_MAC = 48'h001069641F8C;  // 8C-1F-64-69-10-00
 localparam MY_IP = 32'h6408080a;  // 10.8.8.100
 localparam MY_PORT = 16'h60ea;  // 60000
 
