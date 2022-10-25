@@ -28,15 +28,15 @@ MAC_BROADCAST = 'ff:ff:ff:ff:ff:ff'
 
 MAC_DUT0 = MAC_BROADCAST
 MAC_DUT1 = MAC_BROADCAST
-MAC_TESTER0 = '54:45:53:54:5f:30'
-MAC_TESTER1 = '54:45:53:54:5f:31'
+MAC_TESTER0 = '8c:1f:64:69:10:01'
+MAC_TESTER1 = '8c:1f:64:69:10:02'
 MAC_OTHERS = '40:41:42:43:44:45'
 IFACE_DEFAULT_ROUTE = 3
-MAC_DEFAULT_ROUTE = '54:45:53:54:5f:33'
+MAC_DEFAULT_ROUTE = '8c:1f:64:69:10:04'
 
 if SEND_FRAMES:
-  MAC_DUT0 = '54:57:44:32:5f:30'
-  MAC_DUT1 = '54:57:44:32:5f:31'
+  MAC_DUT0 = '8c:1f:64:69:10:05'
+  MAC_DUT1 = '8c:1f:64:69:10:06'
 
 # You may need to change these IP addresses.
 # The following configuration assumes that
@@ -48,11 +48,11 @@ if SEND_FRAMES:
 IP_PREFIX = '2a0e:aa06:497:'
 IP_TESTER0 = IP_PREFIX + '0::2'
 IP_TESTER1 = IP_PREFIX + '1::2'
-IP_DUT0 = 'fe80::5657:44ff:fe32:5f30'  # Device under test.
+IP_DUT0 = 'fe80::8e1f:64ff:fe69:1005'  # Device under test.
 IP_DUT0_GUA = IP_PREFIX + '0::1'
-IP_DUT1 = 'fe80::5657:44ff:fe32:5f31'
-IP_DUT3 = 'fe80::5657:44ff:fe32:5f33'
-IP_DEFAULT_ROUTE = 'fe80::5645:53ff:fe54:5f33'  # The IP address of the default route.
+IP_DUT1 = 'fe80::8e1f:64ff:fe69:1006'
+IP_DUT3 = 'fe80::8e1f:64ff:fe69:1008'
+IP_DEFAULT_ROUTE = 'fe80::8e1f:64ff:fe69:1004'  # The IP address of the default route.
 IP_TEST_NDP = 'fe80::8888'
 IP_TEST_DST = '2402:f000::1'  # Forward destination. Route should exist.
 IP_TEST_DST_NO_MAC = IP_PREFIX + '0::100'  # Forward destination. Route should exist. MAC address should not exist.
