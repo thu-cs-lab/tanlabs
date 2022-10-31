@@ -32,18 +32,31 @@ module frame_gen
     end
     endfunction
 
-    wire [63:0] ip_dst_ptr;
-    reg lfsr_ip_dst_ptr_ce;
+    wire [63:0] ip_dst_ptr_lfsr, ip_dst_ptr_counter;
+    reg ip_dst_ptr_ce;
     lfsr lfsr_ip_dst_ptr(
         .clk(eth_clk),
         .reset(reset),
 
-        .ce(lfsr_ip_dst_ptr_ce || interface_config.set_ip_dst_ptr),
+        .ce(interface_config.use_lfsr_ip_dst && ip_dst_ptr_ce
+            || interface_config.set_ip_dst_ptr),
 
         .set(interface_config.set_ip_dst_ptr),
         .i(interface_config.ip_dst_ptr),
 
-        .o(ip_dst_ptr)
+        .o(ip_dst_ptr_lfsr)
+    );
+    counter counter_ip_dst_ptr(
+        .clk(eth_clk),
+        .reset(reset),
+
+        .ce(!interface_config.use_lfsr_ip_dst && ip_dst_ptr_ce
+            || interface_config.set_ip_dst_ptr),
+
+        .set(interface_config.set_ip_dst_ptr),
+        .i(interface_config.ip_dst_ptr),
+
+        .o(ip_dst_ptr_counter)
     );
 
     wire [63:0] random;
@@ -77,7 +90,7 @@ module frame_gen
 
     always @ (*)
     begin
-        lfsr_ip_dst_ptr_ce = 1'b0;
+        ip_dst_ptr_ce = 1'b0;
         case (state)
         ST_SEND_HEADER:
         begin
@@ -85,7 +98,7 @@ module frame_gen
             begin
                 if (interface_config.enable)
                 begin
-                    lfsr_ip_dst_ptr_ce = 1'b1;
+                    ip_dst_ptr_ce = 1'b1;
                 end
             end
         end
@@ -116,7 +129,8 @@ module frame_gen
         endcase
 
         interface_state = interface_state_reg;
-        interface_state.ip_dst_ptr = ip_dst_ptr;
+        interface_state.ip_dst_ptr = interface_config.use_lfsr_ip_dst ?
+                                         ip_dst_ptr_lfsr : ip_dst_ptr_counter;
     end
 
     always @ (posedge eth_clk or posedge reset)

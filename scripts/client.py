@@ -12,6 +12,7 @@ import socket
 import struct
 import subprocess
 import time
+import tqdm
 
 import pandas
 import matplotlib.pyplot as plt
@@ -52,15 +53,16 @@ REGID_CONF_IP_DST_LO = 6
 REGID_CONF_PACKET_LEN = 7
 REGID_CONF_GAP_LEN = 8
 REGID_CONF_USE_VAR_IP_DST = 9
-REGID_CONF_IP_DST_PTR_MASK = 10
-REGID_IP_DST_PTR = 11
-REGID_SEND_NBYTES = 12
-REGID_SEND_NPACKETS = 13
-REGID_RECV_NBYTES = 14
-REGID_RECV_NBYTES_L3 = 15
-REGID_RECV_NPACKETS = 16
-REGID_RECV_NERROR = 17
-REGID_RECV_LATENCY = 18
+REGID_CONF_USE_LFSR_IP_DST = 10
+REGID_CONF_IP_DST_PTR_MASK = 11
+REGID_IP_DST_PTR = 12
+REGID_SEND_NBYTES = 13
+REGID_SEND_NPACKETS = 14
+REGID_RECV_NBYTES = 15
+REGID_RECV_NBYTES_L3 = 16
+REGID_RECV_NPACKETS = 17
+REGID_RECV_NERROR = 18
+REGID_RECV_LATENCY = 19
 
 REGEX_ND = re.compile(r'Target link-layer address: ([0-9A-Fa-f:]+)\n')
 
@@ -158,7 +160,7 @@ def do_nd(netns, iface, ip):
 
 def set_interface(iface, enable=None, ip_src=None, ip_dst=None, packet_len=None, gap_len=None,
                   mac=None, mac_dst=None, gateway=None,
-                  use_var_ip_dst=None, ip_dst_ptr_mask=None, ip_dst_ptr=None):
+                  use_var_ip_dst=None, use_lfsr_ip_dst=None, ip_dst_ptr_mask=None, ip_dst_ptr=None):
     regid_base = (iface << REGID_IFACE_SHIFT) | (1 << REGID_IFACE_FLAG)
     cp_iface = IFACE_PREFIX + str(iface)
     cp_netns = NETNS_PREFIX + str(iface)
@@ -200,6 +202,8 @@ def set_interface(iface, enable=None, ip_src=None, ip_dst=None, packet_len=None,
         else:
             print(str(gateway), '->', gateway_mac)
         set_interface(iface, mac_dst=gateway_mac)
+    if use_lfsr_ip_dst is not None:
+        write_reg(regid_base + REGID_CONF_USE_LFSR_IP_DST, int(use_lfsr_ip_dst))
     if use_var_ip_dst is not None:
         write_reg(regid_base + REGID_CONF_USE_VAR_IP_DST, int(use_var_ip_dst))
     if ip_dst_ptr_mask is not None:
@@ -345,11 +349,17 @@ def plot_test_all(name='results'):
     for ext in ['pdf', 'png', 'svg']:
         g.savefig(f'{name}-latency.{ext}')
 
+def get_send_iface(i):
+    send_iface = i + 1
+    if send_iface == NINTERFACES:
+        send_iface = 0
+    return send_iface
+
 def test_ip(name='results'):
-    set_interface(0, False, gap_len=int(SERVER_FREQ / 10000))
-    set_interface(1, False, gap_len=int(SERVER_FREQ / 10000))
-    set_interface(2, False, gap_len=int(SERVER_FREQ / 10000))
-    set_interface(3, False, gap_len=int(SERVER_FREQ / 10000))
+    set_interface(0, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
+    set_interface(1, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
+    set_interface(2, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
+    set_interface(3, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
 
     interfaces = [[] for _ in range(NINTERFACES)]
     with open(os.path.dirname(DIR) + '/conf/testip.txt', 'r') as f:
@@ -362,9 +372,7 @@ def test_ip(name='results'):
     send_npackets = 0
     recv_npackets = 0
     for i, iface in enumerate(interfaces):
-        send_iface = i + 1
-        if send_iface == NINTERFACES:
-            send_iface = 0
+        send_iface = get_send_iface(i)
         begin_sample = sample()
         for ip in iface:
             set_interface(send_iface, True, ip_dst=ip, packet_len=random.randint(46, 1500) + 14)
@@ -377,6 +385,75 @@ def test_ip(name='results'):
         recv_npackets += end_sample['interfaces'][i]['recv_npackets'] \
                          - begin_sample['interfaces'][i]['recv_npackets']
         print_delta(sample_delta(begin_sample, end_sample))
+    ratio = recv_npackets / send_npackets if send_npackets else 1.0
+    print('{}%'.format(ratio * 100))
+    return ratio
+
+def test_ip_strict(lfsr=True):
+    interfaces = [[] for _ in range(NINTERFACES)]
+    with open(os.path.dirname(DIR) + '/conf/testip.txt', 'r') as f:
+        for l in f:
+            if not l.strip():
+                continue
+            ip, nexthop_ip, nexthop_iface = l.strip().split()
+            ip = ipaddress.IPv6Address(ip).packed
+            interfaces[int(nexthop_iface)].append(ip)
+
+    print('Downloading the destination IP addresses to the tester...')
+    for i, ips in enumerate(interfaces):
+        j = 0
+        while True:
+            l = len(ips)
+            if (l & ~(l & -l)) == 0:  # is power of 2
+                break
+            ips.append(ips[j])
+            j += 1
+        send_iface = get_send_iface(i)
+        set_interface(send_iface, False)
+        if ips:
+            set_interface(send_iface, use_var_ip_dst=True, use_lfsr_ip_dst=lfsr,
+                          ip_dst_ptr=0x2aa4a59850c62789 if lfsr else 0,
+                          ip_dst_ptr_mask=len(ips) - 1)
+        for j, ip in tqdm.tqdm(list(enumerate(ips))):
+            write_ip_dst(send_iface, j, ip)
+
+    print('Testing (per interface)...')
+    ratios = [0.0] * NINTERFACES
+    for i, ips in enumerate(interfaces):
+        send_iface = get_send_iface(i)
+        if ips:
+            set_interface(send_iface, True, None, None, 46 + 14, 0)
+        begin_sample = sample()
+        time.sleep(1)
+        end_sample = sample()
+        set_interface(send_iface, False)
+        print_delta(sample_delta(begin_sample, end_sample))
+        send_npackets = end_sample['interfaces'][send_iface]['send_npackets'] \
+                        - begin_sample['interfaces'][send_iface]['send_npackets']
+        recv_npackets = end_sample['interfaces'][i]['recv_npackets'] \
+                        - begin_sample['interfaces'][i]['recv_npackets']
+        ratios[i] = recv_npackets / send_npackets if send_npackets else 1.0
+    print(' '.join(map(lambda r: str(r * 100) + '%', ratios)))
+
+    print('Testing (all interfaces)...')
+    for i, ips in enumerate(interfaces):
+        send_iface = get_send_iface(i)
+        if ips:
+            set_interface(send_iface, True, None, None, 46 + 14, 0)
+    begin_sample = sample()
+    time.sleep(3)
+    end_sample = sample()
+    for i in range(NINTERFACES):
+        set_interface(i, False)
+    print_delta(sample_delta(begin_sample, end_sample))
+    send_npackets = 0
+    recv_npackets = 0
+    for i in range(NINTERFACES):
+        send_iface = get_send_iface(i)
+        send_npackets += end_sample['interfaces'][send_iface]['send_npackets'] \
+                         - begin_sample['interfaces'][send_iface]['send_npackets']
+        recv_npackets += end_sample['interfaces'][i]['recv_npackets'] \
+                         - begin_sample['interfaces'][i]['recv_npackets']
     ratio = recv_npackets / send_npackets if send_npackets else 1.0
     print('{}%'.format(ratio * 100))
     return ratio
@@ -403,8 +480,8 @@ if __name__ == '__main__':
     regid_base = (0 << REGID_IFACE_SHIFT) | (1 << REGID_IFACE_FLAG)
     write_reg(REGID_SAMPLE, 1)
     print(hex(read_reg(regid_base + REGID_IP_DST_PTR)))
-    set_interface(0, use_var_ip_dst=True, ip_dst_ptr=0xfff, ip_dst_ptr_mask=0)
-    set_interface(1, use_var_ip_dst=True, ip_dst_ptr_mask=3)
+    set_interface(0, use_var_ip_dst=True, use_lfsr_ip_dst=False, ip_dst_ptr=0xfff, ip_dst_ptr_mask=0)
+    set_interface(1, use_var_ip_dst=True, use_lfsr_ip_dst=True, ip_dst_ptr_mask=3)
     print(hex(read_reg(regid_base + REGID_CONF_USE_VAR_IP_DST)))
     write_reg(REGID_SAMPLE, 1)
     print(hex(read_reg(regid_base + REGID_IP_DST_PTR)))
@@ -432,6 +509,7 @@ if __name__ == '__main__':
     input()
     set_interface(0, ip_dst_ptr_mask=3)
     input()
+    set_interface(0, use_lfsr_ip_dst=True)
     exit(0)
 
     set_interface(0, True, '2a0e:aa06:497::2', '2a0e:aa06:497:1::2', 46 + 14, 0)

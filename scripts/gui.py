@@ -44,12 +44,15 @@ def load_config():
         config['matrix'] = matrix
         config['skip'] = int(config['skip'])
         config['count'] = int(config['count'])
+        config['strict'] = bool(config['strict'])
+        config['lfsr'] = bool(config['lfsr'])
     except Exception as e:
         print('Warning: failed to parse config json:', e)
         config = {'test_name': 'Group 0',
                   'my_ips': [], 'dut_ips': [],
                   'matrix': [],
-                  'skip': 0, 'count': 1000}
+                  'skip': 0, 'count': 1000,
+                  'strict': True, 'lfsr': True}
         my_ips = []
         dut_ips = []
         for i in range(NINTERFACES):
@@ -157,21 +160,29 @@ class MainFrame(wx.Frame):
 
         fib_test_sizer = wx.StaticBoxSizer(wx.VERTICAL, pnl, 'Forwarding Table Capacity Test')
         left_sizer.Add(fib_test_sizer, wx.SizerFlags().Border(wx.TOP).Expand())
-        skip_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        fib_test_sizer.Add(skip_sizer, wx.SizerFlags().Border().Expand())
-        skip_sizer.Add(self.get_text(pnl, 'Skip: '), wx.SizerFlags().Center())
+        skip_count_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        fib_test_sizer.Add(skip_count_sizer, wx.SizerFlags().Border().Expand())
+        skip_count_sizer.Add(self.get_text(pnl, 'Skip: '), wx.SizerFlags().Center())
         self.skip = wx.TextCtrl(pnl, value=str(self.config['skip']))
-        skip_sizer.Add(self.skip, wx.SizerFlags(1).Expand())
-        count_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        fib_test_sizer.Add(count_sizer, wx.SizerFlags().Border().Expand())
-        count_sizer.Add(self.get_text(pnl, 'Count: '), wx.SizerFlags().Center())
+        skip_count_sizer.Add(self.skip, wx.SizerFlags(1).Expand())
+        skip_count_sizer.Add(self.get_text(pnl, ' Count: '), wx.SizerFlags().Center())
         self.count = wx.TextCtrl(pnl, value=str(self.config['count']))
-        count_sizer.Add(self.count, wx.SizerFlags(1).Expand())
+        skip_count_sizer.Add(self.count, wx.SizerFlags(1).Expand())
+        fib_test_check = wx.BoxSizer(wx.HORIZONTAL)
+        fib_test_sizer.Add(fib_test_check, wx.SizerFlags().Border().Expand())
+        self.fib_test_strict_check = wx.CheckBox(pnl, label=f'Strict')
+        fib_test_check.Add(self.fib_test_strict_check, wx.SizerFlags().Border(wx.RIGHT).Expand())
+        self.fib_test_strict_check.SetValue(self.config['strict'])
+        self.fib_test_lfsr_check = wx.CheckBox(pnl, label=f'Use LFSR')
+        fib_test_check.Add(self.fib_test_lfsr_check, wx.SizerFlags().Expand())
+        self.fib_test_lfsr_check.SetValue(self.config['lfsr'])
+        fib_test_button = wx.BoxSizer(wx.HORIZONTAL)
+        fib_test_sizer.Add(fib_test_button, wx.SizerFlags().Border().Expand())
         self.fib_test_config = wx.Button(pnl, label='Configure (&C)')
-        fib_test_sizer.Add(self.fib_test_config, wx.SizerFlags().Border().Expand())
+        fib_test_button.Add(self.fib_test_config, wx.SizerFlags(1).Border(wx.RIGHT).Expand())
         self.fib_test_config.Bind(wx.EVT_BUTTON, self.handle_fib_test_config)
         self.fib_test_test = wx.Button(pnl, label='Test (&F)')
-        fib_test_sizer.Add(self.fib_test_test, wx.SizerFlags().Border().Expand())
+        fib_test_button.Add(self.fib_test_test, wx.SizerFlags(1).Border(wx.LEFT).Expand())
         self.fib_test_test.Bind(wx.EVT_BUTTON, self.handle_fib_test_test)
 
         fib_test_result_sizer = wx.StaticBoxSizer(wx.HORIZONTAL, pnl, 'Forwarding Table Capacity Test Results')
@@ -352,7 +363,8 @@ class MainFrame(wx.Frame):
             for i in range(NINTERFACES):
                 for j in range(NINTERFACES):
                     if matrix[i][j]:
-                        set_interface(i, True, None, self.my_ips_parsed[j], 46 + 14, 0)
+                        set_interface(i, True, None, self.my_ips_parsed[j], 46 + 14, 0,
+                                      use_var_ip_dst=False)
             test_all(testpath)
             for i in range(NINTERFACES):
                 set_interface(i, False)
@@ -440,13 +452,25 @@ class MainFrame(wx.Frame):
                           wx.OK | wx.ICON_ERROR)
             self.test_name.SetFocus()
             return
-        testname = RESULTS_DIR + '/' + testname
+        testpath = RESULTS_DIR + '/' + testname
+        strict = self.fib_test_strict_check.IsChecked()
+        lfsr = self.fib_test_lfsr_check.IsChecked()
         self.disable()
+        self.config['test_name'] = testname
+        self.config['strict'] = strict
+        self.config['lfsr'] = lfsr
+        self.save()
         def worker():
-            self.log(testname, 'Begin Forwarding Table Capacity Test')
-            ratio = test_ip(testname)
-            self.log(testname, 'End Forwarding Table Capacity Test')
-            self.log(testname, f'Ratio = {ratio * 100}%')
+            tags = 'Strict' if strict else 'Loose'
+            if strict:
+                tags += ', ' + ('LFSR' if lfsr else 'Counter')
+            self.log(testpath, f'Begin Forwarding Table Capacity Test ({tags})')
+            if strict:
+                ratio = test_ip_strict(lfsr)
+            else:
+                ratio = test_ip(testpath)
+            self.log(testpath, 'End Forwarding Table Capacity Test')
+            self.log(testpath, f'Ratio = {ratio * 100}%')
             def update_text():
                 self.fib_test_result.SetLabel(f'{ratio * 100}%')
             wx.CallAfter(update_text)

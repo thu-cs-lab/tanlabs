@@ -365,6 +365,7 @@ module ctrl
                             REGID_CONF_PACKET_LEN: regvalue <= config_sel.packet_len;
                             REGID_CONF_GAP_LEN: regvalue <= config_sel.gap_len;
                             REGID_CONF_USE_VAR_IP_DST: regvalue <= config_sel.use_var_ip_dst;
+                            REGID_CONF_USE_LFSR_IP_DST: regvalue <= config_sel.use_lfsr_ip_dst;
                             REGID_CONF_IP_DST_PTR_MASK: regvalue <= config_sel.ip_dst_ptr_mask;
                             REGID_IP_DST_PTR: regvalue <= state_send_sel.ip_dst_ptr;
                             REGID_SEND_NBYTES: regvalue <= state_send_sel.nbytes;
@@ -423,6 +424,7 @@ module ctrl
                             REGID_CONF_PACKET_LEN: confreg.conf[ifaceid].packet_len <= regvalue;
                             REGID_CONF_GAP_LEN: confreg.conf[ifaceid].gap_len <= regvalue;
                             REGID_CONF_USE_VAR_IP_DST: confreg.conf[ifaceid].use_var_ip_dst <= regvalue;
+                            REGID_CONF_USE_LFSR_IP_DST: confreg.conf[ifaceid].use_lfsr_ip_dst <= regvalue;
                             REGID_CONF_IP_DST_PTR_MASK: confreg.conf[ifaceid].ip_dst_ptr_mask <= regvalue;
                             REGID_IP_DST_PTR:
                             begin
