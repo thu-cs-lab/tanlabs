@@ -355,19 +355,25 @@ def get_send_iface(i):
         send_iface = 0
     return send_iface
 
-def test_ip(name='results'):
-    set_interface(0, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
-    set_interface(1, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
-    set_interface(2, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
-    set_interface(3, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
-
+def read_interface_ips(packed=False):
     interfaces = [[] for _ in range(NINTERFACES)]
     with open(os.path.dirname(DIR) + '/conf/testip.txt', 'r') as f:
         for l in f:
             if not l.strip():
                 continue
             ip, nexthop_ip, nexthop_iface = l.strip().split()
+            if packed:
+                ip = ipaddress.IPv6Address(ip).packed
             interfaces[int(nexthop_iface)].append(ip)
+    return interfaces
+
+def test_ip(name='results'):
+    set_interface(0, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
+    set_interface(1, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
+    set_interface(2, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
+    set_interface(3, False, gap_len=int(SERVER_FREQ / 10000), use_var_ip_dst=False)
+
+    interfaces = read_interface_ips()
 
     send_npackets = 0
     recv_npackets = 0
@@ -389,15 +395,8 @@ def test_ip(name='results'):
     print('{}%'.format(ratio * 100))
     return ratio
 
-def test_ip_strict(lfsr=True):
-    interfaces = [[] for _ in range(NINTERFACES)]
-    with open(os.path.dirname(DIR) + '/conf/testip.txt', 'r') as f:
-        for l in f:
-            if not l.strip():
-                continue
-            ip, nexthop_ip, nexthop_iface = l.strip().split()
-            ip = ipaddress.IPv6Address(ip).packed
-            interfaces[int(nexthop_iface)].append(ip)
+def download_ip(lfsr=True):
+    interfaces = read_interface_ips(True)
 
     print('Downloading the destination IP addresses to the tester...')
     for i, ips in enumerate(interfaces):
@@ -416,6 +415,9 @@ def test_ip_strict(lfsr=True):
                           ip_dst_ptr_mask=len(ips) - 1)
         for j, ip in tqdm.tqdm(list(enumerate(ips))):
             write_ip_dst(send_iface, j, ip)
+
+def test_ip_strict(lfsr=True):
+    interfaces = read_interface_ips(True)
 
     print('Testing (per interface)...')
     ratios = [0.0] * NINTERFACES

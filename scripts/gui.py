@@ -181,6 +181,9 @@ class MainFrame(wx.Frame):
         self.fib_test_config = wx.Button(pnl, label='Configure (&C)')
         fib_test_button.Add(self.fib_test_config, wx.SizerFlags(1).Border(wx.RIGHT).Expand())
         self.fib_test_config.Bind(wx.EVT_BUTTON, self.handle_fib_test_config)
+        self.fib_test_download = wx.Button(pnl, label='Download (&D)')
+        fib_test_button.Add(self.fib_test_download, wx.SizerFlags(1).Border(wx.LEFT | wx.RIGHT).Expand())
+        self.fib_test_download.Bind(wx.EVT_BUTTON, self.handle_fib_test_download)
         self.fib_test_test = wx.Button(pnl, label='Test (&F)')
         fib_test_button.Add(self.fib_test_test, wx.SizerFlags(1).Border(wx.LEFT).Expand())
         self.fib_test_test.Bind(wx.EVT_BUTTON, self.handle_fib_test_test)
@@ -439,6 +442,24 @@ class MainFrame(wx.Frame):
         self.save()
         self.log(testpath, f'Configure {count} routes from {skip}')
         self.exec_cmd('configure-routes', str(skip), str(count))
+
+    def handle_fib_test_download(self, e):
+        testname = self.test_name.GetLineText(0)
+        if not testname:
+            wx.MessageBox(f'Test Name should not be empty.', 'Error',
+                          wx.OK | wx.ICON_ERROR)
+            self.test_name.SetFocus()
+            return
+        testpath = RESULTS_DIR + '/' + testname
+        lfsr = self.fib_test_lfsr_check.IsChecked()
+        self.disable()
+        self.config['test_name'] = testname
+        self.config['lfsr'] = lfsr
+        self.save()
+        def worker():
+            self.log(testpath, f'Download the configured destination IP addresses to the tester')
+            download_ip(lfsr)
+        self.go(worker)
 
     def handle_fib_test_test(self, e):
         if not self.my_ips_parsed:
