@@ -185,6 +185,7 @@ class MainFrame(wx.Frame):
         fib_test_button.Add(self.fib_test_download, wx.SizerFlags(1).Border(wx.LEFT | wx.RIGHT).Expand())
         self.fib_test_download.Bind(wx.EVT_BUTTON, self.handle_fib_test_download)
         self.fib_test_test = wx.Button(pnl, label='Test (&F)')
+        self.fib_test_test.Disable()
         fib_test_button.Add(self.fib_test_test, wx.SizerFlags(1).Border(wx.LEFT).Expand())
         self.fib_test_test.Bind(wx.EVT_BUTTON, self.handle_fib_test_test)
 
@@ -436,6 +437,7 @@ class MainFrame(wx.Frame):
             self.bird_run.SetFocus()
             return
         '''
+        self.fib_test_test.Disable()
         self.config['test_name'] = testname
         self.config['skip'] = skip
         self.config['count'] = count
@@ -459,6 +461,9 @@ class MainFrame(wx.Frame):
         def worker():
             self.log(testpath, f'Download the configured destination IP addresses to the tester')
             download_ip(lfsr)
+            def enable_test():
+                self.fib_test_test.Enable()
+            wx.CallAfter(enable_test)
         self.go(worker)
 
     def handle_fib_test_test(self, e):
