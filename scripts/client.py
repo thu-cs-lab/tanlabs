@@ -395,18 +395,17 @@ def test_ip(name='results'):
     print('{}%'.format(ratio * 100))
     return ratio
 
+def next_power_of_2(x):
+    if x == 0:
+        return 0
+    return 1 << (x - 1).bit_length()
+
 def download_ip(lfsr=True):
     interfaces = read_interface_ips(True)
 
     print('Downloading the destination IP addresses to the tester...')
     for i, ips in enumerate(interfaces):
-        j = 0
-        while True:
-            l = len(ips)
-            if (l & ~(l & -l)) == 0:  # is power of 2
-                break
-            ips.append(ips[j])
-            j += 1
+        ips += ips[:next_power_of_2(len(ips)) - len(ips)]
         send_iface = get_send_iface(i)
         set_interface(send_iface, False)
         if ips:
@@ -418,6 +417,14 @@ def download_ip(lfsr=True):
 
 def test_ip_strict(lfsr=True):
     interfaces = read_interface_ips(True)
+
+    for i, ips in enumerate(interfaces):
+        send_iface = get_send_iface(i)
+        set_interface(send_iface, False)
+        if ips:
+            set_interface(send_iface, use_var_ip_dst=True, use_lfsr_ip_dst=lfsr,
+                          ip_dst_ptr=0x2aa4a59850c62789 if lfsr else 0,
+                          ip_dst_ptr_mask=next_power_of_2(len(ips)) - 1)
 
     print('Testing (per interface)...')
     ratios = [0.0] * NINTERFACES
