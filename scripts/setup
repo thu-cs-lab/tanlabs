@@ -55,7 +55,7 @@ protocol rip ng {
         import all;
         export all;
     };
-    debug all;
+    #debug all;
     interface "${iface}" {
         update time 3;
         timeout time 18;

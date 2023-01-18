@@ -265,10 +265,10 @@ class MainFrame(wx.Frame):
         self.go(worker)
 
     def read_cmd(self, script, *args):
-        print('<<<<<<', ' '.join([script, *args]))
+        #print('<<<<<<', ' '.join([script, *args]))
         with subprocess.Popen([DIR + '/' + script, *args], stdout=subprocess.PIPE) as p:
             out = p.stdout.read().decode()
-        print(out)
+        #print(out)
         return out
 
     def log(self, testname, line):
