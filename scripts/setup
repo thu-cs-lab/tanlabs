@@ -55,11 +55,11 @@ protocol rip ng {
         import all;
         export all;
     };
-    debug all;
+    #debug all;
     interface "${iface}" {
-        update time 3;
-        timeout time 18;
-        garbage time 12;
+        update time 20;
+        timeout time 60;
+        garbage time 60;
     };
 }
 EOF

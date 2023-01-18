@@ -4,7 +4,7 @@ set -e
 IFACE=${1}
 
 # RIPng 5040 routes in 3s: 278.507Kbps
-LIMIT=0.5Mbit
+LIMIT=0.25Mbit
 
 tc qdisc del dev ${IFACE} root || true
 tc qdisc add dev ${IFACE} root handle 1:0 htb default 1
