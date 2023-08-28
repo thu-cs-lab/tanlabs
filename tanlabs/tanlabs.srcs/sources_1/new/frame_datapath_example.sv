@@ -3,6 +3,8 @@
 // Example Pipeline Frame Data Path.
 // It provides useless features, but lets you be familiar with tanlabs. 
 
+`include "frame_datapath.vh"
+
 module frame_datapath_example
 #(
     parameter DATA_WIDTH = 64,
@@ -29,61 +31,54 @@ module frame_datapath_example
     input wire m_ready
 );
 
-    `include "frame_datapath.vh"
-
-    frame_data in;
+    frame_beat in8, in;
     wire in_ready;
 
-    // README: Here, we use a width upsizer to change the width to 48 bytes
-    // (MAC 14 + ARP 28 + round up 6) to ensure that L2 (MAC) and L3 (IPv4 or ARP) headers appear
-    // in one beat (the first beat) facilitating our processing.
-    // You can remove this.
-    axis_dwidth_converter_up axis_dwidth_converter_up_i(
-        .aclk(eth_clk),
-        .aresetn(~reset),
-
-        .s_axis_tvalid(s_valid),
-        .s_axis_tready(s_ready),
-        .s_axis_tdata(s_data),
-        .s_axis_tkeep(s_keep),
-        .s_axis_tlast(s_last),
-        .s_axis_tid(s_id),
-        .s_axis_tuser(s_user),
-
-        .m_axis_tvalid(in.valid),
-        .m_axis_tready(in_ready),
-        .m_axis_tdata(in.data),
-        .m_axis_tkeep(in.keep),
-        .m_axis_tlast(in.last),
-        .m_axis_tid(in.id),
-        .m_axis_tuser(in.user)
-    );
-
-    assign in.drop = 1'b0;
-    assign in.drop_next = 1'b0;
-    assign in.dont_touch = 1'b0;
-    assign in.dest = 0;
+    always @ (*)
+    begin
+        in8.meta = 0;
+        in8.valid = s_valid;
+        in8.data = s_data;
+        in8.keep = s_keep;
+        in8.last = s_last;
+        in8.meta.id = s_id;
+        in8.user = s_user;
+    end
 
     // Track frames and figure out when it is the first beat.
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
         begin
-            in.is_first <= 1'b1;
+            in8.is_first <= 1'b1;
         end
         else
         begin
-            if (in.valid && in_ready)
+            if (in8.valid && s_ready)
             begin
-                in.is_first <= in.last;
+                in8.is_first <= in8.last;
             end
         end
     end
 
+    // README: Here, we use a width upsizer to change the width to 56 bytes
+    // (MAC 14 + IPv6 40 + round up 2) to ensure that L2 (MAC) and L3 (IPv6) headers appear
+    // in one beat (the first beat) facilitating our processing.
+    // You can remove this.
+    frame_beat_width_converter #(DATA_WIDTH, DATAW_WIDTH) frame_beat_upsizer(
+        .clk(eth_clk),
+        .rst(reset),
+
+        .in(in8),
+        .in_ready(s_ready),
+        .out(in),
+        .out_ready(in_ready)
+    );
+
     // README: USELESS features :-)
     // You do not have to have exactly 5 stages.
 
-    frame_data s1;
+    frame_beat s1;
     wire s1_ready;
     assign in_ready = s1_ready || !in.valid;
     always @ (posedge eth_clk or posedge reset)
@@ -95,7 +90,7 @@ module frame_datapath_example
         else if (s1_ready)
         begin
             s1 <= in;
-            if (in.valid && in.is_first && !in.drop && !in.dont_touch)
+            if (`should_handle(in))
             begin
                 // We only process the beat that
                 //   1) is valid, otherwise its data is **garbage**;
@@ -111,7 +106,7 @@ module frame_datapath_example
         end
     end
 
-    frame_data s2;
+    frame_beat s2;
     wire s2_ready;
     assign s1_ready = s2_ready || !s1.valid;
     always @ (posedge eth_clk or posedge reset)
@@ -123,12 +118,12 @@ module frame_datapath_example
         else if (s2_ready)
         begin
             s2 <= s1;
-            if (s1.valid && s1.is_first && !s1.drop && !s1.dont_touch)
+            if (`should_handle(s1))
             begin
-                // Useless feature 2: Drop IP packets whose TTL values are odd.
-                if (s1.data.ethertype == ETHERTYPE_IP4 && s1.data.payload.ip4.ttl[0] == 1'b1)
+                // Useless feature 2: Drop IPv6 packets whose hop limit values are odd.
+                if (s1.data.ethertype == ETHERTYPE_IP6 && s1.data.ip6.hop_limit[0] == 1'b1)
                 begin
-                    s2.drop <= 1'b1;
+                    s2.meta.drop <= 1'b1;
                 end
             end
         end
@@ -142,7 +137,7 @@ module frame_datapath_example
         ST_BAZ
     } s3_state_t;
 
-    frame_data s3_reg, s3;
+    frame_beat s3_reg, s3;
     s3_state_t s3_state;
     wire s3_ready;
     assign s2_ready = (s3_ready && s3_state == ST_SEND_RECV) || !s2.valid;
@@ -169,7 +164,7 @@ module frame_datapath_example
                 if (s3_ready)
                 begin
                     s3_reg <= s2;
-                    if (s2.valid && s2.is_first && !s2.drop && !s2.dont_touch)
+                    if (`should_handle(s2))
                     begin
                         s3_state <= ST_FOO;
                     end
@@ -198,7 +193,7 @@ module frame_datapath_example
         end
     end
 
-    frame_data s4;
+    frame_beat s4;
     wire s4_ready;
     assign s3_ready = s4_ready || !s3.valid;
     always @ (posedge eth_clk or posedge reset)
@@ -210,18 +205,18 @@ module frame_datapath_example
         else if (s4_ready)
         begin
             s4 <= s3;
-            if (s3.valid && s3.is_first && !s3.drop && !s3.dont_touch)
+            if (`should_handle(s3))
             begin
-                // Useless feature 4: Decrease TTL of IP packets without updating the checksums.
-                if (s3.data.ethertype == ETHERTYPE_IP4)
+                // Useless feature 4: Decrease hop limit of IPv6 packets.
+                if (s3.data.ethertype == ETHERTYPE_IP6)
                 begin
-                    s4.data.payload.ip4.ttl[0] <= s3.data.payload.ip4.ttl[0] - 1;
+                    s4.data.ip6.hop_limit <= s3.data.ip6.hop_limit - 1;
                 end
             end
         end
     end
 
-    frame_data s5;
+    frame_beat s5;
     wire s5_ready;
     assign s4_ready = s5_ready || !s4.valid;
     always @ (posedge eth_clk or posedge reset)
@@ -233,15 +228,15 @@ module frame_datapath_example
         else if (s5_ready)
         begin
             s5 <= s4;
-            if (s4.valid && s4.is_first && !s4.drop && !s4.dont_touch)
+            if (`should_handle(s4))
             begin
                 // Useless feature 5: Let all packets go back to their ingress interfaces.
-                s5.dest <= s4.id;
+                s5.meta.dest <= s4.meta.id;
             end
         end
     end
 
-    frame_data out;
+    frame_beat out;
     assign out = s5;
 
     wire out_ready;
@@ -276,16 +271,16 @@ module frame_datapath_example
         begin
             if (out_is_first && out.valid && out_ready)
             begin
-                dest <= out.dest;
-                drop_by_prev <= out.drop_next;
+                dest <= out.meta.dest;
+                drop_by_prev <= out.meta.drop_next;
             end
         end
     end
 
     // Rewrite dest.
-    wire [ID_WIDTH - 1:0] dest_current = out_is_first ? out.dest : dest;
+    wire [ID_WIDTH - 1:0] dest_current = out_is_first ? out.meta.dest : dest;
 
-    frame_data filtered;
+    frame_beat filtered;
     wire filtered_ready;
 
     frame_filter
@@ -305,36 +300,33 @@ module frame_datapath_example
         .s_valid(out.valid),
         .s_ready(out_ready),
 
-        .drop(out.drop || drop_by_prev),
+        .drop(out.meta.drop || drop_by_prev),
 
         .m_data(filtered.data),
         .m_keep(filtered.keep),
         .m_last(filtered.last),
         .m_user(filtered.user),
-        .m_id(filtered.dest),
+        .m_id(filtered.meta.dest),
         .m_valid(filtered.valid),
         .m_ready(filtered_ready)
     );
 
     // README: Change the width back. You can remove this.
-    axis_dwidth_converter_down axis_dwidth_converter_down_i(
-        .aclk(eth_clk),
-        .aresetn(~reset),
+    frame_beat out8;
+    frame_beat_width_converter #(DATAW_WIDTH, DATA_WIDTH) frame_beat_downsizer(
+        .clk(eth_clk),
+        .rst(reset),
 
-        .s_axis_tvalid(filtered.valid),
-        .s_axis_tready(filtered_ready),
-        .s_axis_tdata(filtered.data),
-        .s_axis_tkeep(filtered.keep),
-        .s_axis_tlast(filtered.last),
-        .s_axis_tid(filtered.dest),
-        .s_axis_tuser(filtered.user),
-
-        .m_axis_tvalid(m_valid),
-        .m_axis_tready(m_ready),
-        .m_axis_tdata(m_data),
-        .m_axis_tkeep(m_keep),
-        .m_axis_tlast(m_last),
-        .m_axis_tid(m_dest),
-        .m_axis_tuser(m_user)
+        .in(filtered),
+        .in_ready(filtered_ready),
+        .out(out8),
+        .out_ready(m_ready)
     );
+
+    assign m_valid = out8.valid;
+    assign m_data = out8.data;
+    assign m_keep = out8.keep;
+    assign m_last = out8.last;
+    assign m_dest = out8.meta.dest;
+    assign m_user = out8.user;
 endmodule

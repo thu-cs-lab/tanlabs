@@ -2,6 +2,8 @@
 
 // Example Frame Data Path.
 
+`include "frame_datapath.vh"
+
 module frame_datapath
 #(
     parameter DATA_WIDTH = 64,
@@ -28,64 +30,59 @@ module frame_datapath
     input wire m_ready
 );
 
-    `include "frame_datapath.vh"
-
-    frame_data in;
+    frame_beat in8, in;
     wire in_ready;
 
-    // README: Here, we use a width upsizer to change the width to 48 bytes
-    // (MAC 14 + ARP 28 + round up 6) to ensure that L2 (MAC) and L3 (IPv4 or ARP) headers appear
-    // in one beat (the first beat) facilitating our processing.
-    // You can remove this.
-    axis_dwidth_converter_up axis_dwidth_converter_up_i(
-        .aclk(eth_clk),
-        .aresetn(~reset),
-
-        .s_axis_tvalid(s_valid),
-        .s_axis_tready(s_ready),
-        .s_axis_tdata(s_data),
-        .s_axis_tkeep(s_keep),
-        .s_axis_tlast(s_last),
-        .s_axis_tid(s_id),
-        .s_axis_tuser(s_user),
-
-        .m_axis_tvalid(in.valid),
-        .m_axis_tready(in_ready),
-        .m_axis_tdata(in.data),
-        .m_axis_tkeep(in.keep),
-        .m_axis_tlast(in.last),
-        .m_axis_tid(in.id),
-        .m_axis_tuser(in.user)
-    );
-
-    assign in.drop = 1'b0;
-    assign in.drop_next = 1'b0;
+    always @ (*)
+    begin
+        in8.meta = 0;
+        in8.valid = s_valid;
+        in8.data = s_data;
+        in8.keep = s_keep;
+        in8.last = s_last;
+        in8.meta.id = s_id;
+        in8.user = s_user;
+    end
 
     // Track frames and figure out when it is the first beat.
     always @ (posedge eth_clk or posedge reset)
     begin
         if (reset)
         begin
-            in.is_first <= 1'b1;
+            in8.is_first <= 1'b1;
         end
         else
         begin
-            if (in.valid && in_ready)
+            if (in8.valid && s_ready)
             begin
-                in.is_first <= in.last;
+                in8.is_first <= in8.last;
             end
         end
     end
 
+    // README: Here, we use a width upsizer to change the width to 56 bytes
+    // (MAC 14 + IPv6 40 + round up 2) to ensure that L2 (MAC) and L3 (IPv6) headers appear
+    // in one beat (the first beat) facilitating our processing.
+    // You can remove this.
+    frame_beat_width_converter #(DATA_WIDTH, DATAW_WIDTH) frame_beat_upsizer(
+        .clk(eth_clk),
+        .rst(reset),
+
+        .in(in8),
+        .in_ready(s_ready),
+        .out(in),
+        .out_ready(in_ready)
+    );
+
     // README: Your code here.
     // See the guide to figure out what you need to do with frames.
 
-    frame_data out;
+    frame_beat out;
 
     always @ (*)
     begin
         out = in;
-        out.dest = 0;  // All frames are forwarded to interface 0!
+        out.meta.dest = 0;  // All frames are forwarded to interface 0!
     end
 
     wire out_ready;
@@ -120,16 +117,16 @@ module frame_datapath
         begin
             if (out_is_first && out.valid && out_ready)
             begin
-                dest <= out.dest;
-                drop_by_prev <= out.drop_next;
+                dest <= out.meta.dest;
+                drop_by_prev <= out.meta.drop_next;
             end
         end
     end
 
     // Rewrite dest.
-    wire [ID_WIDTH - 1:0] dest_current = out_is_first ? out.dest : dest;
+    wire [ID_WIDTH - 1:0] dest_current = out_is_first ? out.meta.dest : dest;
 
-    frame_data filtered;
+    frame_beat filtered;
     wire filtered_ready;
 
     frame_filter
@@ -149,36 +146,33 @@ module frame_datapath
         .s_valid(out.valid),
         .s_ready(out_ready),
 
-        .drop(out.drop || drop_by_prev),
+        .drop(out.meta.drop || drop_by_prev),
 
         .m_data(filtered.data),
         .m_keep(filtered.keep),
         .m_last(filtered.last),
         .m_user(filtered.user),
-        .m_id(filtered.dest),
+        .m_id(filtered.meta.dest),
         .m_valid(filtered.valid),
         .m_ready(filtered_ready)
     );
 
     // README: Change the width back. You can remove this.
-    axis_dwidth_converter_down axis_dwidth_converter_down_i(
-        .aclk(eth_clk),
-        .aresetn(~reset),
+    frame_beat out8;
+    frame_beat_width_converter #(DATAW_WIDTH, DATA_WIDTH) frame_beat_downsizer(
+        .clk(eth_clk),
+        .rst(reset),
 
-        .s_axis_tvalid(filtered.valid),
-        .s_axis_tready(filtered_ready),
-        .s_axis_tdata(filtered.data),
-        .s_axis_tkeep(filtered.keep),
-        .s_axis_tlast(filtered.last),
-        .s_axis_tid(filtered.dest),
-        .s_axis_tuser(filtered.user),
-
-        .m_axis_tvalid(m_valid),
-        .m_axis_tready(m_ready),
-        .m_axis_tdata(m_data),
-        .m_axis_tkeep(m_keep),
-        .m_axis_tlast(m_last),
-        .m_axis_tid(m_dest),
-        .m_axis_tuser(m_user)
+        .in(filtered),
+        .in_ready(filtered_ready),
+        .out(out8),
+        .out_ready(m_ready)
     );
+
+    assign m_valid = out8.valid;
+    assign m_data = out8.data;
+    assign m_keep = out8.keep;
+    assign m_last = out8.last;
+    assign m_dest = out8.meta.dest;
+    assign m_user = out8.user;
 endmodule

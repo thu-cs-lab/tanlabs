@@ -76,6 +76,11 @@ module axis_receiver
                 begin
                     if (s_keep[i])
                     begin
+                        if (s_user[i])
+                        begin
+                            $display("ASSERTION FAILED: AXI-Stream user is high, BAD FRAME!");
+                            $finish;
+                        end
                         $write("%02x ", s_data[i * 8 +: 8]);
                         $fwrite(fd, "%02x", s_data[i * 8 +: 8]);
                     end
