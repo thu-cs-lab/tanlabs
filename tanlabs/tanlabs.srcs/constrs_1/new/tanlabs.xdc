@@ -13,7 +13,7 @@ set_false_path -from [get_ports RST]
 
 # SFP+ 0
 set_property PACKAGE_PIN K14 [get_ports {sfp_los[0]}]
-set_property PACKAGE_PIN J14 [get_ports {sfp_tx_disable[0]}]
+set_property PACKAGE_PIN K15 [get_ports {sfp_tx_disable[0]}]
 set_property PACKAGE_PIN V5 [get_ports {sfp_rx_n[0]}]
 set_property PACKAGE_PIN V6 [get_ports {sfp_rx_p[0]}]
 set_property PACKAGE_PIN T1 [get_ports {sfp_tx_n[0]}]
@@ -21,7 +21,7 @@ set_property PACKAGE_PIN T2 [get_ports {sfp_tx_p[0]}]
 
 # SFP+ 1
 set_property PACKAGE_PIN L15 [get_ports {sfp_los[1]}]
-set_property PACKAGE_PIN K15 [get_ports {sfp_tx_disable[1]}]
+set_property PACKAGE_PIN J14 [get_ports {sfp_tx_disable[1]}]
 set_property PACKAGE_PIN AA3 [get_ports {sfp_rx_n[1]}]
 set_property PACKAGE_PIN AA4 [get_ports {sfp_rx_p[1]}]
 set_property PACKAGE_PIN Y1 [get_ports {sfp_tx_n[1]}]
@@ -29,7 +29,7 @@ set_property PACKAGE_PIN Y2 [get_ports {sfp_tx_p[1]}]
 
 # SFP+ 2
 set_property PACKAGE_PIN L12 [get_ports {sfp_los[2]}]
-set_property PACKAGE_PIN J12 [get_ports {sfp_tx_disable[2]}]
+set_property PACKAGE_PIN J13 [get_ports {sfp_tx_disable[2]}]
 set_property PACKAGE_PIN Y5 [get_ports {sfp_rx_n[2]}]
 set_property PACKAGE_PIN Y6 [get_ports {sfp_rx_p[2]}]
 set_property PACKAGE_PIN V1 [get_ports {sfp_tx_n[2]}]
@@ -37,7 +37,7 @@ set_property PACKAGE_PIN V2 [get_ports {sfp_tx_p[2]}]
 
 # SFP+ 3
 set_property PACKAGE_PIN K13 [get_ports {sfp_los[3]}]
-set_property PACKAGE_PIN J13 [get_ports {sfp_tx_disable[3]}]
+set_property PACKAGE_PIN J12 [get_ports {sfp_tx_disable[3]}]
 set_property PACKAGE_PIN W3 [get_ports {sfp_rx_n[3]}]
 set_property PACKAGE_PIN W4 [get_ports {sfp_rx_p[3]}]
 set_property PACKAGE_PIN U3 [get_ports {sfp_tx_n[3]}]
