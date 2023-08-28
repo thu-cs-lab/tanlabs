@@ -1,9 +1,9 @@
 {
   "design": {
     "design_info": {
-      "boundary_crc": "0x39251F3461257377",
+      "boundary_crc": "0xE8366F0D1D892104",
       "design_src": "SBD",
-      "device": "xc7a200tfbg676-2",
+      "device": "xc7k325tffg900-2",
       "name": "bd_5d9f",
       "scoped": "true",
       "synth_flow_mode": "Hierarchical",
@@ -619,7 +619,7 @@
           }
         }
       },
-      "gt0_pll0outclk_out": {
+      "gt0_qplloutclk_out": {
         "type": "clk",
         "direction": "O",
         "parameters": {
@@ -637,7 +637,7 @@
           }
         }
       },
-      "gt0_pll0outrefclk_out": {
+      "gt0_qplloutrefclk_out": {
         "type": "clk",
         "direction": "O",
         "parameters": {
@@ -654,48 +654,6 @@
             "value_src": "default"
           }
         }
-      },
-      "gt0_pll1outclk_out": {
-        "type": "clk",
-        "direction": "O",
-        "parameters": {
-          "FREQ_HZ": {
-            "value": "100000000",
-            "value_src": "default"
-          },
-          "INSERT_VIP": {
-            "value": "0",
-            "value_src": "default"
-          },
-          "PHASE": {
-            "value": "0.000",
-            "value_src": "default"
-          }
-        }
-      },
-      "gt0_pll1outrefclk_out": {
-        "type": "clk",
-        "direction": "O",
-        "parameters": {
-          "FREQ_HZ": {
-            "value": "100000000",
-            "value_src": "default"
-          },
-          "INSERT_VIP": {
-            "value": "0",
-            "value_src": "default"
-          },
-          "PHASE": {
-            "value": "0.000",
-            "value_src": "default"
-          }
-        }
-      },
-      "gt0_pll0lock_out": {
-        "direction": "O"
-      },
-      "gt0_pll0refclklost_out": {
-        "direction": "O"
       },
       "ref_clk": {
         "type": "clk",
@@ -1032,34 +990,10 @@
           "mac/s_axi"
         ]
       },
-      "s_axis_pause_1": {
-        "interface_ports": [
-          "s_axis_pause",
-          "mac/s_axis_pause"
-        ]
-      },
-      "mac_tx_statistics": {
-        "interface_ports": [
-          "tx_statistics",
-          "mac/tx_statistics"
-        ]
-      },
       "mac_rx_statistics": {
         "interface_ports": [
           "rx_statistics",
           "mac/rx_statistics"
-        ]
-      },
-      "pcs_pma_sfp": {
-        "interface_ports": [
-          "sfp",
-          "pcs_pma/sfp"
-        ]
-      },
-      "s_axis_tx_1": {
-        "interface_ports": [
-          "s_axis_tx",
-          "mac/s_axis_tx"
         ]
       },
       "mac_m_axis_rx": {
@@ -1068,10 +1002,34 @@
           "mac/m_axis_rx"
         ]
       },
+      "mac_tx_statistics": {
+        "interface_ports": [
+          "tx_statistics",
+          "mac/tx_statistics"
+        ]
+      },
+      "s_axis_pause_1": {
+        "interface_ports": [
+          "s_axis_pause",
+          "mac/s_axis_pause"
+        ]
+      },
+      "s_axis_tx_1": {
+        "interface_ports": [
+          "s_axis_tx",
+          "mac/s_axis_tx"
+        ]
+      },
       "mac_gmii": {
         "interface_ports": [
           "mac/gmii",
           "pcs_pma/gmii_pcs_pma"
+        ]
+      },
+      "pcs_pma_sfp": {
+        "interface_ports": [
+          "sfp",
+          "pcs_pma/sfp"
         ]
       },
       "mgt_clk_1": {
@@ -1276,40 +1234,16 @@
           "userclk_out"
         ]
       },
-      "pcs_pma_gt0_pll0outclk_out": {
+      "pcs_pma_gt0_qplloutclk_out": {
         "ports": [
-          "pcs_pma/gt0_pll0outclk_out",
-          "gt0_pll0outclk_out"
+          "pcs_pma/gt0_qplloutclk_out",
+          "gt0_qplloutclk_out"
         ]
       },
-      "pcs_pma_gt0_pll0outrefclk_out": {
+      "pcs_pma_gt0_qplloutrefclk_out": {
         "ports": [
-          "pcs_pma/gt0_pll0outrefclk_out",
-          "gt0_pll0outrefclk_out"
-        ]
-      },
-      "pcs_pma_gt0_pll1outclk_out": {
-        "ports": [
-          "pcs_pma/gt0_pll1outclk_out",
-          "gt0_pll1outclk_out"
-        ]
-      },
-      "pcs_pma_gt0_pll1outrefclk_out": {
-        "ports": [
-          "pcs_pma/gt0_pll1outrefclk_out",
-          "gt0_pll1outrefclk_out"
-        ]
-      },
-      "pcs_pma_gt0_pll0lock_out": {
-        "ports": [
-          "pcs_pma/gt0_pll0lock_out",
-          "gt0_pll0lock_out"
-        ]
-      },
-      "pcs_pma_gt0_pll0refclklost_out": {
-        "ports": [
-          "pcs_pma/gt0_pll0refclklost_out",
-          "gt0_pll0refclklost_out"
+          "pcs_pma/gt0_qplloutrefclk_out",
+          "gt0_qplloutrefclk_out"
         ]
       }
     },

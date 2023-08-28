@@ -10,8 +10,8 @@ module tanlabs
 (
     input wire RST,
 
-    input wire gtrefclk_p,
-    input wire gtrefclk_n,
+    input wire gtclk_125_p,
+    input wire gtclk_125_n,
 
     output wire [15:0] led,
 
@@ -24,10 +24,11 @@ module tanlabs
     input wire [3:0] sfp_rx_los,
     input wire [3:0] sfp_rx_p,
     input wire [3:0] sfp_rx_n,
-    output wire [3:0] sfp_tx_disable,
+    output wire [3:0] sfp_tx_dis,
     output wire [3:0] sfp_tx_p,
     output wire [3:0] sfp_tx_n,
-    output wire [7:0] sfp_led,  // 0 1  2 3  4 5  6 7
+    output wire [3:0] sfp_link,
+    output wire [3:0] sfp_act,
 
     // I2C for SFP, unused.
     input wire sfp_sda,
@@ -41,50 +42,53 @@ module tanlabs
     output wire [7:0] dpy0,
     output wire [7:0] dpy1,
 
-    // CPLD UART.
-    output wire uart_rdn,
-    output wire uart_wrn,
-    input wire uart_dataready,
-    input wire uart_tbre,
-    input wire uart_tsre,
+    // GPIOs.
+    input wire [7:0] ext_io,
 
-    // SRAMs.
+    // SRAM.
     inout wire [31:0] base_ram_data,
-    output wire [19:0] base_ram_addr,
+    output wire [20:0] base_ram_addr,
     output wire [3:0] base_ram_be_n,
     output wire base_ram_ce_n,
     output wire base_ram_oe_n,
     output wire base_ram_we_n,
 
-    inout wire [31:0] ext_ram_data,
-    output wire [19:0] ext_ram_addr,
-    output wire [3:0] ext_ram_be_n,
-    output wire ext_ram_ce_n,
-    output wire ext_ram_oe_n,
-    output wire ext_ram_we_n,
-
-    // UART.
-    output wire txd,
-    input wire rxd,
-
-    // Flash.
-    output wire [22:0] flash_a,
-    inout wire [15:0] flash_d,
-    output wire flash_rp_n,
-    output wire flash_vpen,
-    output wire flash_ce_n,
-    output wire flash_oe_n,
-    output wire flash_we_n,
-    output wire flash_byte_n,
-
     // HDMI.
-    output wire [2:0] video_red,
-    output wire [2:0] video_green,
-    output wire [1:0] video_blue,
-    output wire video_hsync,
-    output wire video_vsync,
-    output wire video_clk,
-    output wire video_de
+    input wire hdmi_ddc_scl,
+    input wire hdmi_ddc_sda,
+    input wire hdmi_hotplug,
+    output wire [2:0] hdmi_data_p,
+    output wire [2:0] hdmi_data_n,
+    output wire hdmi_clock_p,
+    output wire hdmi_clock_n,
+
+    // RGMII.
+    output wire rgmii_mdc,
+    inout wire rgmii_mdio,
+    input wire rgmii_rxclk,
+    input wire rgmii_rxctl,
+    input wire [3:0] rgmii_rxd,
+    output wire rgmii_txclk,
+    output wire rgmii_txctl,
+    output wire [3:0] rgmii_txd,
+
+    // SODIMM.
+    inout [63:0] ddr3_dq,
+    inout [7:0] ddr3_dqs_n,
+    inout [7:0] ddr3_dqs_p,
+
+    output [15:0] ddr3_addr,
+    output [2:0] ddr3_ba,
+    output ddr3_ras_n,
+    output ddr3_cas_n,
+    output ddr3_we_n,
+    output ddr3_reset_n,
+    output [0:0] ddr3_ck_p,
+    output [0:0] ddr3_ck_n,
+    output [0:0] ddr3_cke,
+    output [0:0] ddr3_cs_n,
+    output [7:0] ddr3_dm,
+    output [0:0] ddr3_odt
 );
 
     localparam DATA_WIDTH = 64;
@@ -119,12 +123,8 @@ module tanlabs
     wire userclk_out;
     wire userclk2_out;
     wire pma_reset_out;
-    wire gt0_pll0outclk_out;
-    wire gt0_pll0outrefclk_out;
-    wire gt0_pll1outclk_out;
-    wire gt0_pll1outrefclk_out;
-    wire gt0_pll0lock_out;
-    wire gt0_pll0refclklost_out;
+    wire gt0_qplloutclk_out;
+    wire gt0_qplloutrefclk_out;
     wire gtref_clk_out;
     wire gtref_clk_buf_out;
 
@@ -157,7 +157,7 @@ module tanlabs
         begin : phy_mac_ip_cores
             // Instantiate 4 PHY/MAC IP cores.
 
-            assign sfp_tx_disable[0] = 1'b0;
+            assign sfp_tx_dis[0] = 1'b0;
             axi_ethernet_0 axi_ethernet_0_i(
                 .mac_irq(),
                 .tx_mac_aclk(),
@@ -173,12 +173,8 @@ module tanlabs
                 .userclk_out(userclk_out),
                 .userclk2_out(userclk2_out),
                 .pma_reset_out(pma_reset_out),
-                .gt0_pll0outclk_out(gt0_pll0outclk_out),
-                .gt0_pll0outrefclk_out(gt0_pll0outrefclk_out),
-                .gt0_pll1outclk_out(gt0_pll1outclk_out),
-                .gt0_pll1outrefclk_out(gt0_pll1outrefclk_out),
-                .gt0_pll0lock_out(gt0_pll0lock_out),
-                .gt0_pll0refclklost_out(gt0_pll0refclklost_out),
+                .gt0_qplloutclk_out(gt0_qplloutclk_out),
+                .gt0_qplloutrefclk_out(gt0_qplloutrefclk_out),
                 .gtref_clk_out(gtref_clk_out),
                 .gtref_clk_buf_out(gtref_clk_buf_out),
 
@@ -231,13 +227,13 @@ module tanlabs
                 .sfp_txn(sfp_tx_n[0]),
                 .sfp_txp(sfp_tx_p[0]),
 
-                .mgt_clk_clk_n(gtrefclk_n),
-                .mgt_clk_clk_p(gtrefclk_p)
+                .mgt_clk_clk_n(gtclk_125_n),
+                .mgt_clk_clk_p(gtclk_125_p)
             );
 
             for (i = 1; i < 4; i = i + 1)
             begin
-                assign sfp_tx_disable[i] = 1'b0;
+                assign sfp_tx_dis[i] = 1'b0;
                 axi_ethernet_noshared axi_ethernet_noshared_i(
                     .mac_irq(),
                     .tx_mac_aclk(),
@@ -256,13 +252,8 @@ module tanlabs
                     .pma_reset(pma_reset_out),
                     .rxoutclk(),
                     .txoutclk(),
-                    .gt0_pll0outclk_in(gt0_pll0outclk_out),
-                    .gt0_pll0outrefclk_in(gt0_pll0outrefclk_out),
-                    .gt0_pll1outclk_in(gt0_pll1outclk_out),
-                    .gt0_pll1outrefclk_in(gt0_pll1outrefclk_out),
-                    .gt0_pll0lock_in(gt0_pll0lock_out),
-                    .gt0_pll0refclklost_in(gt0_pll0refclklost_out),
-                    .gt0_pll0reset_out(),
+                    .gt0_qplloutclk_in(gt0_qplloutclk_out),
+                    .gt0_qplloutrefclk_in(gt0_qplloutrefclk_out),
                     .gtref_clk(gtref_clk_out),
                     .gtref_clk_buf(gtref_clk_buf_out),
 
@@ -320,11 +311,11 @@ module tanlabs
         else
         begin : axis_models
             // For simulation.
-            assign gtref_clk_buf_out = gtrefclk_p;
-            assign userclk2_out = gtrefclk_p;
+            assign gtref_clk_buf_out = gtclk_125_p;
+            assign userclk2_out = gtclk_125_p;
             assign mmcm_locked_out = 1'b1;
 
-            assign sfp_tx_disable = 0;
+            assign sfp_tx_dis = 0;
             assign sfp_tx_p = 0;
             assign sfp_tx_n = 0;
 
@@ -549,13 +540,17 @@ module tanlabs
     led_delayer led_delayer_i(
         .clk(eth_clk),
         .reset(reset_eth),
-        .in_led({eth_tx8_valid[3] & eth_tx8_ready[3], ~sfp_rx_los[3],
-                 eth_tx8_valid[2] & eth_tx8_ready[2], ~sfp_rx_los[2],
-                 eth_tx8_valid[1] & eth_tx8_ready[1], ~sfp_rx_los[1],
-                 eth_tx8_valid[0] & eth_tx8_ready[0], ~sfp_rx_los[0]}),
+        .in_led({~sfp_rx_los[3],
+                 ~sfp_rx_los[2],
+                 ~sfp_rx_los[1],
+                 ~sfp_rx_los[0],
+                 eth_tx8_valid[3] & eth_tx8_ready[3],
+                 eth_tx8_valid[2] & eth_tx8_ready[2],
+                 eth_tx8_valid[1] & eth_tx8_ready[1],
+                 eth_tx8_valid[0] & eth_tx8_ready[0]}),
         .out_led(out_led)
     );
-    assign sfp_led = out_led;
+    assign {sfp_link, sfp_act} = out_led;
 
     generate
         for (i = 0; i < 4; i = i + 1)
@@ -636,24 +631,53 @@ module tanlabs
             else
             begin
                 counter <= counter + 1;
-            end 
+            end
         end
     end
-    assign led[15:8] = blink;
+    // assign led[15:8] = blink;
 
     // HDMI Test. 800x600 @ 75Hz, pixel clock 50MHz
-    wire [11:0] hdata;
-    assign video_red = hdata < 266 ? 3'b111 : 0;
-    assign video_green = hdata < 532 && hdata >= 266 ? 3'b111 : 0;
-    assign video_blue = hdata >= 532 ? 2'b11 : 0;
-    assign video_clk = clk_50M;
-    vga #(12, 800, 856, 976, 1040, 600, 637, 643, 666, 1, 1) vga800x600at75 (
-        .clk(clk_50M), 
-        .hdata(hdata),
+    wire hdmi_locked, hdmi_clk, hdmi_clk5x;
+    clk_wiz_hdmi clk_wiz_hdmi_i(
+        .hdmi_clk_out(hdmi_clk),
+        .hdmi_clk5x_out(hdmi_clk5x),
+        .reset(1'b0),
+        .locked(hdmi_locked),
+        .clk_in1(gtref_clk)
+    );
+
+    wire hdmi_reset_not_sync = reset_not_sync || !hdmi_locked;
+
+    wire [11:0] video_hdata;
+    wire [7:0] video_red = video_hdata < 266 ? 8'hff : 0;
+    wire [7:0] video_green = video_hdata < 532 && video_hdata >= 266 ? 8'hff : 0;
+    wire [7:0] video_blue = video_hdata >= 532 ? 8'hff : 0;
+    wire [23:0] video_data = {video_blue, video_green, video_red};
+    wire video_hsync, video_vsync, video_de;
+    vga #(12, 800, 856, 976, 1040, 600, 637, 643, 666, 1, 1) vga800x600at75(
+        .clk(hdmi_clk),
+        .hdata(video_hdata),
         .vdata(),
         .hsync(video_hsync),
         .vsync(video_vsync),
         .data_enable(video_de)
+    );
+
+    rgb2dvi #(
+        .kGenerateSerialClk(1'b0)
+    ) rgb2dvi_i(
+        .TMDS_Clk_p(hdmi_clock_p),
+        .TMDS_Clk_n(hdmi_clock_n),
+        .TMDS_Data_p(hdmi_data_p),
+        .TMDS_Data_n(hdmi_data_n),
+        .aRst(hdmi_reset_not_sync),
+        .aRst_n(1'b1),
+        .vid_pData(video_data),
+        .vid_pVDE(video_de),
+        .vid_pHSync(video_hsync),
+        .vid_pVSync(video_vsync),
+        .PixelClk(hdmi_clk),
+        .SerialClk(hdmi_clk5x)
     );
 
     // Counter Test.
@@ -687,22 +711,14 @@ module tanlabs
     reg ram_we;
     wire [3:0] ram_be = 4'b1111;
 
-    assign base_ram_addr = ram_addr[19:0];
-    assign ext_ram_addr = ram_addr[19:0];
-    wire [31:0] ram_data_i = ram_addr[20] ? ext_ram_data : base_ram_data;
+    assign base_ram_addr = ram_addr;
+    wire [31:0] ram_data_i = base_ram_data;
     assign base_ram_data = ram_we ? ram_data_o : 'bz;
-    assign ext_ram_data = ram_we ? ram_data_o : 'bz;
 
-    assign uart_rdn = 1'b1;
-    assign uart_wrn = 1'b1;
     assign base_ram_be_n = ~ram_be;
-    assign base_ram_ce_n = ram_addr[20];
+    assign base_ram_ce_n = 1'b0;
     assign base_ram_oe_n = ram_we;
     assign base_ram_we_n = ~ram_we | ram_clk;  // Magic!!!
-    assign ext_ram_be_n = ~ram_be;
-    assign ext_ram_ce_n = ~ram_addr[20];
-    assign ext_ram_oe_n = ram_we;
-    assign ext_ram_we_n = ~ram_we | ram_clk;  // Magic!!!
 
     localparam ST_WRITE = 1;
     localparam ST_START_READ = 2;
@@ -825,4 +841,66 @@ module tanlabs
             endcase
         end
     end
+
+    // DRAM Test.
+    wire init_calib_complete;
+    wire dram_clk, dram_rst;
+    wire [29:0] app_addr = 0;
+    wire [2:0] app_cmd = 0;
+    wire app_en = 0;
+    wire app_rdy;
+    wire [255:0] app_wdf_data = 0;
+    wire app_wdf_end = 0;
+    wire app_wdf_wren = 0;
+    wire [31:0] app_wdf_mask = 0;
+    wire app_wdf_rdy;
+    wire [255:0] app_rd_data;
+    wire app_rd_data_valid;
+    mig_7series_0 u_mig_7series_0(
+        .ddr3_addr(ddr3_addr),
+        .ddr3_ba(ddr3_ba),
+        .ddr3_cas_n(ddr3_cas_n),
+        .ddr3_ck_n(ddr3_ck_n),
+        .ddr3_ck_p(ddr3_ck_p),
+        .ddr3_cke(ddr3_cke),
+        .ddr3_ras_n(ddr3_ras_n),
+        .ddr3_reset_n(ddr3_reset_n),
+        .ddr3_we_n(ddr3_we_n),
+        .ddr3_dq(ddr3_dq),
+        .ddr3_dqs_n(ddr3_dqs_n),
+        .ddr3_dqs_p(ddr3_dqs_p),
+        .ddr3_cs_n(ddr3_cs_n),
+        .ddr3_dm(ddr3_dm),
+        .ddr3_odt(ddr3_odt),
+
+        .ui_clk(dram_clk),
+        .ui_clk_sync_rst(dram_rst),
+        .app_addr(app_addr),
+        .app_cmd(app_cmd),
+        .app_en(app_en),
+        .app_rdy(app_rdy),
+        .app_wdf_data(app_wdf_data),
+        .app_wdf_end(app_wdf_end),
+        .app_wdf_wren(app_wdf_wren),
+        .app_wdf_mask(app_wdf_mask),
+        .app_wdf_rdy(app_wdf_rdy),
+        .app_rd_data(app_rd_data),
+        .app_rd_data_end(),
+        .app_rd_data_valid(app_rd_data_valid),
+
+        .app_sr_req(1'b0),
+        .app_ref_req(1'b0),
+        .app_zq_req(1'b0),
+        .app_sr_active(),
+        .app_ref_ack(),
+        .app_zq_ack(),
+
+        .sys_clk_i(ref_clk),
+        .sys_rst(reset_in),
+        .init_calib_complete(init_calib_complete)
+    );
+
+    // TODO
+
+    assign led[8] = init_calib_complete;
 endmodule
