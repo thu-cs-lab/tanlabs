@@ -140,6 +140,37 @@ module tanlabs
         .o(reset_eth)
     );
 
+    integer init_counter;
+    reg init_or, init_and;
+    wire [7:0] init_or8 = {8{init_or}};
+    wire [7:0] init_and8 = {8{init_and}};
+    always @ (posedge eth_clk or posedge reset_eth)
+    begin
+        if (reset_eth)
+        begin
+            init_counter <= 0;
+            init_or <= 1'b1;
+            init_and <= 1'b1;
+        end
+        else
+        begin
+            if (init_counter == 250000000 - 1)
+            begin
+                init_or <= 1'b0;
+                init_and <= 1'b1;
+            end
+            else
+            begin
+                if (init_counter == 125000000 - 1)
+                begin
+                    init_or <= 1'b0;
+                    init_and <= 1'b0;
+                end
+                init_counter <= init_counter + 1;
+            end
+        end
+    end
+
     wire [7:0] eth_tx8_data [0:3];
     wire eth_tx8_last [0:3];
     wire eth_tx8_ready [0:3];
@@ -536,7 +567,7 @@ module tanlabs
         end
     endgenerate
 
-    wire [7:0] out_led;
+    wire [7:0] sfp_led;
     led_delayer led_delayer_i(
         .clk(eth_clk),
         .reset(reset_eth),
@@ -548,9 +579,9 @@ module tanlabs
                  eth_tx8_valid[2] & eth_tx8_ready[2],
                  eth_tx8_valid[1] & eth_tx8_ready[1],
                  eth_tx8_valid[0] & eth_tx8_ready[0]}),
-        .out_led(out_led)
+        .out_led(sfp_led)
     );
-    assign {sfp_link, sfp_act} = out_led;
+    assign {sfp_link, sfp_act} = sfp_led & init_and8 | init_or8;
 
     generate
         for (i = 0; i < 4; i = i + 1)
@@ -584,6 +615,7 @@ module tanlabs
         end
     endgenerate
 
+    wire [15:0] led_inter;
     led_delayer led_delayer_debug_i1(
         .clk(eth_clk),
         .reset(reset_eth),
@@ -591,8 +623,9 @@ module tanlabs
                  eth_rx8_user[2], eth_rx8_valid[2],
                  eth_rx8_user[1], eth_rx8_valid[1],
                  eth_rx8_user[0], eth_rx8_valid[0]}),
-        .out_led(led[7:0])
+        .out_led(led_inter[7:0])
     );
+    assign led = led_inter & {init_and8, init_and8} | {init_or8, init_or8};
 
     // README: You may use this to reset your CPU.
     wire reset_core;
@@ -612,13 +645,13 @@ module tanlabs
     );
 
     // Blink Test.
-    reg [7:0] blink;
+    reg [3:0] blink;
     integer counter;
     always @ (posedge clk_50M or posedge reset_50M)
     begin
         if (reset_50M)
         begin
-            blink <= 8'h55;
+            blink <= 4'b0001;
             counter <= 0;
         end
         else
@@ -626,7 +659,7 @@ module tanlabs
             if (counter == 25000000 - 1)
             begin
                 counter <= 0;
-                blink <= {blink[6:0], blink[7]};
+                blink <= {blink[2:0], blink[3]};
             end
             else
             begin
@@ -634,7 +667,8 @@ module tanlabs
             end
         end
     end
-    // assign led[15:8] = blink;
+    assign led_inter[15:12] = blink;
+    assign led_inter[11] = ^touch_btn ^ ^dip_sw;
 
     // HDMI Test. 800x600 @ 75Hz, pixel clock 50MHz
     wire hdmi_locked, hdmi_clk, hdmi_clk5x;
@@ -648,16 +682,18 @@ module tanlabs
 
     wire hdmi_reset_not_sync = reset_not_sync || !hdmi_locked;
 
-    wire [11:0] video_hdata;
-    wire [7:0] video_red = video_hdata < 266 ? 8'hff : 0;
-    wire [7:0] video_green = video_hdata < 532 && video_hdata >= 266 ? 8'hff : 0;
-    wire [7:0] video_blue = video_hdata >= 532 ? 8'hff : 0;
-    wire [23:0] video_data = {video_blue, video_green, video_red};
+    wire [11:0] video_hdata, video_vdata;
+    wire x0 = video_hdata < 266, x1 = video_hdata < 532 && video_hdata >= 266, x2 = video_hdata >= 532;
+    wire y0 = video_vdata < 200, y1 = video_vdata < 400 && video_vdata >= 200, y2 = video_vdata >= 400;
+    wire [7:0] video_red = (y0 && x0) || (y1 && (x1 || x2)) || (y2 && x1) ? 8'hff : (y2 && x2) ? 8'h80 : 0;
+    wire [7:0] video_green = (y0 && x1) || (y1 && (x0 || x2)) || (y2 && x1) ? 8'hff : (y2 && x2) ? 8'h80 : 0;
+    wire [7:0] video_blue = (y0 && x2) || (y1 && (x0 || x1)) || (y2 && x1) ? 8'hff : (y2 && x2) ? 8'h80 : 0;
+    wire [23:0] video_data = {video_red, video_blue, video_green};  // GBR
     wire video_hsync, video_vsync, video_de;
     vga #(12, 800, 856, 976, 1040, 600, 637, 643, 666, 1, 1) vga800x600at75(
         .clk(hdmi_clk),
         .hdata(video_hdata),
-        .vdata(),
+        .vdata(video_vdata),
         .hsync(video_hsync),
         .vsync(video_vsync),
         .data_enable(video_de)
@@ -682,7 +718,9 @@ module tanlabs
 
     // Counter Test.
     reg [3:0] number_counter;
-    SEG7_LUT segH(.oSEG1(dpy1), .iDIG(number_counter));
+    wire [7:0] dpy1_inter;
+    SEG7_LUT segH(.oSEG1(dpy1_inter), .iDIG(number_counter));
+    assign dpy1 = dpy1_inter & init_and8 | init_or8;
     always @ (posedge BTN or posedge RST)
     begin
         if (RST)
@@ -730,7 +768,9 @@ module tanlabs
     integer state;
 
     reg [3:0] ram_info;
-    SEG7_LUT segL(.oSEG1(dpy0), .iDIG(ram_info));
+    wire [7:0] dpy0_inter;
+    SEG7_LUT segL(.oSEG1(dpy0_inter), .iDIG(ram_info));
+    assign dpy0 = dpy0_inter & init_and8 | init_or8;
 
     always @ (*)
     begin
@@ -818,10 +858,11 @@ module tanlabs
                 PATT_5: pattern_state <= PATT_A;
                 PATT_A: pattern_state <= PATT_F;
                 PATT_F: pattern_state <= PATT_ADDR;
-                PATT_ADDR: pattern_state <= PATT_0;
-                /*begin
-                    state <= ST_DONE;
-                end*/
+                PATT_ADDR:
+                begin
+                    // state <= ST_DONE;
+                    pattern_state <= PATT_0;
+                end
                 default: pattern_state <= PATT_0;
                 endcase
             end
@@ -845,17 +886,17 @@ module tanlabs
     // DRAM Test.
     wire init_calib_complete;
     wire dram_clk, dram_rst;
-    wire [29:0] app_addr = 0;
-    wire [2:0] app_cmd = 0;
-    wire app_en = 0;
-    wire app_rdy;
-    wire [255:0] app_wdf_data = 0;
-    wire app_wdf_end = 0;
-    wire app_wdf_wren = 0;
-    wire [31:0] app_wdf_mask = 0;
-    wire app_wdf_rdy;
-    wire [255:0] app_rd_data;
-    wire app_rd_data_valid;
+    (* mark_debug="true" *) reg [28:0] app_addr;
+    (* mark_debug="true" *) reg [2:0] app_cmd;
+    (* mark_debug="true" *) reg app_en;
+    (* mark_debug="true" *) wire app_rdy;
+    (* mark_debug="true" *) reg [511:0] app_wdf_data;
+    (* mark_debug="true" *) reg app_wdf_end;
+    (* mark_debug="true" *) reg app_wdf_wren;
+    (* mark_debug="true" *) reg [63:0] app_wdf_mask;
+    (* mark_debug="true" *) wire app_wdf_rdy;
+    (* mark_debug="true" *) wire [511:0] app_rd_data;
+    (* mark_debug="true" *) wire app_rd_data_valid;
     mig_7series_0 u_mig_7series_0(
         .ddr3_addr(ddr3_addr),
         .ddr3_ba(ddr3_ba),
@@ -875,7 +916,7 @@ module tanlabs
 
         .ui_clk(dram_clk),
         .ui_clk_sync_rst(dram_rst),
-        .app_addr(app_addr),
+        .app_addr({1'b0, app_addr}),
         .app_cmd(app_cmd),
         .app_en(app_en),
         .app_rdy(app_rdy),
@@ -900,7 +941,202 @@ module tanlabs
         .init_calib_complete(init_calib_complete)
     );
 
-    // TODO
+    localparam DRAM_READ = 3'b001;
+    localparam DRAM_WRITE = 3'b000;
+    localparam DRAM_MAX_ADDR = 29'h1ffffff8;
+    localparam DRAM_FREQ = 133333333;
 
-    assign led[8] = init_calib_complete;
+    reg [28:0] dram_addr;
+
+    reg dram_pass;
+    (* mark_debug="true" *) integer dram_state;
+    (* mark_debug="true" *) integer dram_pattern_state;
+    reg [511:0] dram_pattern;
+    reg [28:0] dram_pattern_addr;
+
+    function [511:0] gen_patt;
+        input integer state;
+        input wire [28:0] addr;
+    begin
+        case (state)
+            PATT_0: gen_patt = 512'h00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000;
+            PATT_5: gen_patt = 512'h55555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555;
+            PATT_A: gen_patt = 512'hAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
+            PATT_F: gen_patt = 512'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+            default: gen_patt = {addr[28:3], 6'h3F, addr[28:3], 6'h3B, addr[28:3], 6'h37, addr[28:3], 6'h33,
+                                 addr[28:3], 6'h2E, addr[28:3], 6'h2A, addr[28:3], 6'h26, addr[28:3], 6'h22,
+                                 addr[28:3], 6'h1D, addr[28:3], 6'h19, addr[28:3], 6'h15, addr[28:3], 6'h11,
+                                 addr[28:3], 6'h0C, addr[28:3], 6'h08, addr[28:3], 6'h04, addr[28:3], 6'h00};
+            endcase
+    end
+    endfunction
+
+    reg dram_addr_acked, dram_wdata_acked;
+    wire dram_addr_fire = app_en && app_rdy;
+    wire dram_wdata_fire = app_wdf_wren && app_wdf_rdy;
+    wire dram_addr_ack = dram_addr_acked || dram_addr_fire;
+    wire dram_wdata_ack = dram_wdata_acked || dram_wdata_fire;
+    reg [31:0] dram_wdt;
+
+    always @ (posedge dram_clk or posedge dram_rst)
+    begin
+        if (dram_rst)
+        begin
+            dram_pass <= 1'b0;
+            dram_state <= ST_WRITE;
+            dram_pattern_state <= PATT_0;
+            dram_addr <= 0;
+            dram_addr_acked <= 1'b0;
+            dram_wdata_acked <= 1'b0;
+            app_addr <= 0;
+            app_cmd <= DRAM_READ;
+            app_en <= 1'b0;
+            app_wdf_data <= 0;
+            app_wdf_end <= 1'b0;
+            app_wdf_wren <= 1'b0;
+            app_wdf_mask <= 0;
+            dram_wdt <= 0;
+        end
+        else
+        begin
+            if (dram_wdt == 5 * DRAM_FREQ - 1)
+            begin
+                // The Watch Dog times out.
+                dram_state <= ST_ERROR;
+            end
+            dram_wdt <= dram_wdt + 1;
+
+            case (dram_state)
+            ST_WRITE:
+            begin
+                if (!dram_addr_acked)
+                begin
+                    app_addr <= dram_addr;
+                    app_cmd <= DRAM_WRITE;
+                    app_en <= 1'b1;
+                end
+
+                if (dram_addr_fire)
+                begin
+                    dram_addr_acked <= 1'b1;
+                    app_en <= 1'b0;
+                end
+
+                if (!dram_wdata_acked)
+                begin
+                    app_wdf_data <= gen_patt(dram_pattern_state, dram_addr);
+                    app_wdf_mask <= 0;
+                    app_wdf_end <= 1'b1;
+                    app_wdf_wren <= 1'b1;
+                end
+
+                if (dram_wdata_fire)
+                begin
+                    dram_wdata_acked <= 1'b1;
+                    app_wdf_wren <= 1'b0;
+                end
+
+                if (dram_addr_ack && dram_wdata_ack)
+                begin
+                    dram_addr_acked <= 1'b0;
+                    dram_wdata_acked <= 1'b0;
+                    dram_wdt <= 0;
+
+                    if (dram_addr == DRAM_MAX_ADDR)
+                    begin
+                        dram_addr <= 0;
+                        app_addr <= 0;
+                        app_cmd <= DRAM_READ;
+                        app_en <= 1'b1;
+                        dram_state <= ST_READ_CHECK;
+                    end
+                    else
+                    begin
+                        app_addr <= dram_addr + 8;
+                        dram_addr <= dram_addr + 8;
+                        app_cmd <= DRAM_WRITE;
+                        app_en <= 1'b1;
+                        app_wdf_data <= gen_patt(dram_pattern_state, dram_addr + 8);
+                        app_wdf_mask <= 0;
+                        app_wdf_end <= 1'b1;
+                        app_wdf_wren <= 1'b1;
+                    end
+                end
+            end
+            ST_READ_CHECK:
+            begin
+                if (!dram_addr_acked)
+                begin
+                    app_addr <= dram_addr;
+                    app_cmd <= DRAM_READ;
+                    app_en <= 1'b1;
+                end
+
+                if (dram_addr_fire)
+                begin
+                    dram_addr_acked <= 1'b1;
+                    app_en <= 1'b0;
+                end
+
+                if (dram_addr_acked && app_rd_data_valid)
+                begin
+                    dram_addr_acked <= 1'b0;
+                    dram_wdt <= 0;
+
+                    if (app_rd_data != gen_patt(dram_pattern_state, dram_addr))
+                    begin
+                        dram_state <= ST_ERROR;
+                    end
+                    else if (dram_addr == DRAM_MAX_ADDR)
+                    begin
+                        dram_addr <= 0;
+                        dram_state <= ST_NEXT_PATTERN;
+                    end
+                    else
+                    begin
+                        app_addr <= dram_addr + 8;
+                        dram_addr <= dram_addr + 8;
+                        app_cmd <= DRAM_READ;
+                        app_en <= 1'b1;
+                    end
+                end
+            end
+            ST_NEXT_PATTERN:
+            begin
+                dram_wdt <= 0;
+                dram_state <= ST_WRITE;
+                case (dram_pattern_state)
+                PATT_0: dram_pattern_state <= PATT_5;
+                PATT_5: dram_pattern_state <= PATT_A;
+                PATT_A: dram_pattern_state <= PATT_F;
+                PATT_F: dram_pattern_state <= PATT_ADDR;
+                PATT_ADDR:
+                begin
+                    // dram_state <= ST_DONE;
+                    dram_pattern_state <= PATT_0;
+                    dram_pass <= 1'b1;
+                end
+                default: dram_pattern_state <= PATT_0;
+                endcase
+            end
+            ST_DONE:
+            begin
+                dram_wdt <= 0;
+            end
+            ST_ERROR:
+            begin
+                dram_wdt <= 0;
+                dram_pass <= 1'b0;
+            end
+            default:
+            begin
+                dram_state <= ST_WRITE;
+                dram_addr <= 0;
+            end
+            endcase
+        end
+    end
+
+    assign led_inter[10:8] = {dram_pass, dram_state != ST_ERROR, init_calib_complete};
+
 endmodule

@@ -43,7 +43,7 @@
     <MemoryDevice>DDR3_SDRAM/SODIMMs/MT8KTF51264HZ-1G6</MemoryDevice>
     <TimePeriod>1875</TimePeriod>
     <VccAuxIO>2.0V</VccAuxIO>
-    <PHYRatio>2:1</PHYRatio>
+    <PHYRatio>4:1</PHYRatio>
     <InputClkFreq>200</InputClkFreq>
     <UIExtraClocks>0</UIExtraClocks>
     <MMCM_VCO>1066</MMCM_VCO>
