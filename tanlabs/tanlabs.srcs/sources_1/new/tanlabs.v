@@ -868,11 +868,11 @@ module tanlabs
             end
             ST_DONE:
             begin
-                
+
             end
             ST_ERROR:
             begin
-                
+
             end
             default:
             begin
