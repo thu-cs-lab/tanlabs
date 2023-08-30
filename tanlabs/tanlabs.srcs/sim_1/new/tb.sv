@@ -112,18 +112,19 @@ module tb
     dut(
         .RST(reset),
 
-        .gtrefclk_p(clk_125M),
-        .gtrefclk_n(~clk_125M),
+        .gtclk_125_p(clk_125M),
+        .gtclk_125_n(~clk_125M),
 
         .led(),
 
         .sfp_rx_los(4'd0),
         .sfp_rx_p(sfp_tb2dut_p),
         .sfp_rx_n(sfp_tb2dut_n),
-        .sfp_tx_disable(),
+        .sfp_tx_dis(),
         .sfp_tx_p(sfp_dut2tb_p),
         .sfp_tx_n(sfp_dut2tb_n),
-        .sfp_led(),
+        .sfp_link(),
+        .sfp_act(),
 
         .sfp_sda(1'b0),
         .sfp_scl(1'b0)

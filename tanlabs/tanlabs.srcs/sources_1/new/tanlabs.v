@@ -9,8 +9,8 @@ module tanlabs
 (
     input wire RST,
 
-    input wire gtrefclk_p,
-    input wire gtrefclk_n,
+    input wire gtclk_125_p,
+    input wire gtclk_125_n,
 
     output wire [15:0] led,
 
@@ -23,12 +23,13 @@ module tanlabs
     input wire [3:0] sfp_rx_los,
     input wire [3:0] sfp_rx_p,
     input wire [3:0] sfp_rx_n,
-    output wire [3:0] sfp_tx_disable,
+    output wire [3:0] sfp_tx_dis,
     output wire [3:0] sfp_tx_p,
     output wire [3:0] sfp_tx_n,
-    output wire [7:0] sfp_led,  // 0 1  2 3  4 5  6 7
+    output wire [3:0] sfp_link,
+    output wire [3:0] sfp_act,
 
-    // unused.
+    // I2C for SFP, unused.
     input wire sfp_sda,
     input wire sfp_scl
 );
@@ -63,12 +64,8 @@ module tanlabs
     wire userclk_out;
     wire userclk2_out;
     wire pma_reset_out;
-    wire gt0_pll0outclk_out;
-    wire gt0_pll0outrefclk_out;
-    wire gt0_pll1outclk_out;
-    wire gt0_pll1outrefclk_out;
-    wire gt0_pll0lock_out;
-    wire gt0_pll0refclklost_out;
+    wire gt0_qplloutclk_out;
+    wire gt0_qplloutrefclk_out;
     wire gtref_clk_out;
     wire gtref_clk_buf_out;
 
@@ -101,7 +98,7 @@ module tanlabs
         begin : phy_mac_ip_cores
             // Instantiate 4 PHY/MAC IP cores.
 
-            assign sfp_tx_disable[0] = 1'b0;
+            assign sfp_tx_dis[0] = 1'b0;
             axi_ethernet_0 axi_ethernet_0_i(
                 .mac_irq(),
                 .tx_mac_aclk(),
@@ -117,12 +114,8 @@ module tanlabs
                 .userclk_out(userclk_out),
                 .userclk2_out(userclk2_out),
                 .pma_reset_out(pma_reset_out),
-                .gt0_pll0outclk_out(gt0_pll0outclk_out),
-                .gt0_pll0outrefclk_out(gt0_pll0outrefclk_out),
-                .gt0_pll1outclk_out(gt0_pll1outclk_out),
-                .gt0_pll1outrefclk_out(gt0_pll1outrefclk_out),
-                .gt0_pll0lock_out(gt0_pll0lock_out),
-                .gt0_pll0refclklost_out(gt0_pll0refclklost_out),
+                .gt0_qplloutclk_out(gt0_qplloutclk_out),
+                .gt0_qplloutrefclk_out(gt0_qplloutrefclk_out),
                 .gtref_clk_out(gtref_clk_out),
                 .gtref_clk_buf_out(gtref_clk_buf_out),
 
@@ -175,13 +168,13 @@ module tanlabs
                 .sfp_txn(sfp_tx_n[0]),
                 .sfp_txp(sfp_tx_p[0]),
 
-                .mgt_clk_clk_n(gtrefclk_n),
-                .mgt_clk_clk_p(gtrefclk_p)
+                .mgt_clk_clk_n(gtclk_125_n),
+                .mgt_clk_clk_p(gtclk_125_p)
             );
 
             for (i = 1; i < 4; i = i + 1)
             begin
-                assign sfp_tx_disable[i] = 1'b0;
+                assign sfp_tx_dis[i] = 1'b0;
                 axi_ethernet_noshared axi_ethernet_noshared_i(
                     .mac_irq(),
                     .tx_mac_aclk(),
@@ -200,13 +193,8 @@ module tanlabs
                     .pma_reset(pma_reset_out),
                     .rxoutclk(),
                     .txoutclk(),
-                    .gt0_pll0outclk_in(gt0_pll0outclk_out),
-                    .gt0_pll0outrefclk_in(gt0_pll0outrefclk_out),
-                    .gt0_pll1outclk_in(gt0_pll1outclk_out),
-                    .gt0_pll1outrefclk_in(gt0_pll1outrefclk_out),
-                    .gt0_pll0lock_in(gt0_pll0lock_out),
-                    .gt0_pll0refclklost_in(gt0_pll0refclklost_out),
-                    .gt0_pll0reset_out(),
+                    .gt0_qplloutclk_in(gt0_qplloutclk_out),
+                    .gt0_qplloutrefclk_in(gt0_qplloutrefclk_out),
                     .gtref_clk(gtref_clk_out),
                     .gtref_clk_buf(gtref_clk_buf_out),
 
@@ -264,11 +252,11 @@ module tanlabs
         else
         begin : axis_models
             // For simulation.
-            assign gtref_clk_buf_out = gtrefclk_p;
-            assign userclk2_out = gtrefclk_p;
+            assign gtref_clk_buf_out = gtclk_125_p;
+            assign userclk2_out = gtclk_125_p;
             assign mmcm_locked_out = 1'b1;
 
-            assign sfp_tx_disable = 0;
+            assign sfp_tx_dis = 0;
             assign sfp_tx_p = 0;
             assign sfp_tx_n = 0;
 
@@ -516,17 +504,21 @@ module tanlabs
     assign internal_tx_valid = 0;
     assign internal_rx_ready = 0;
 
-    wire [7:0] out_led;
+    wire [7:0] sfp_led;
     led_delayer led_delayer_i(
         .clk(eth_clk),
         .reset(reset_eth),
-        .in_led({(eth_tx8_valid[3] & eth_tx8_ready[3]) | eth_rx8_valid[3], ~sfp_rx_los[3],
-                 (eth_tx8_valid[2] & eth_tx8_ready[2]) | eth_rx8_valid[2], ~sfp_rx_los[2],
-                 (eth_tx8_valid[1] & eth_tx8_ready[1]) | eth_rx8_valid[1], ~sfp_rx_los[1],
-                 (eth_tx8_valid[0] & eth_tx8_ready[0]) | eth_rx8_valid[0], ~sfp_rx_los[0]}),
-        .out_led(out_led)
+        .in_led({~sfp_rx_los[3],
+                 ~sfp_rx_los[2],
+                 ~sfp_rx_los[1],
+                 ~sfp_rx_los[0],
+                 (eth_tx8_valid[3] & eth_tx8_ready[3]) | eth_rx8_valid[3],
+                 (eth_tx8_valid[2] & eth_tx8_ready[2]) | eth_rx8_valid[2],
+                 (eth_tx8_valid[1] & eth_tx8_ready[1]) | eth_rx8_valid[1],
+                 (eth_tx8_valid[0] & eth_tx8_ready[0]) | eth_rx8_valid[0]}),
+        .out_led(sfp_led)
     );
-    assign sfp_led = out_led;
+    assign {sfp_link, sfp_act} = sfp_led;
 
     wire [DATA_WIDTH - 1:0] eth_rx_data;
     wire [DATA_WIDTH / 8 - 1:0] eth_rx_keep;
