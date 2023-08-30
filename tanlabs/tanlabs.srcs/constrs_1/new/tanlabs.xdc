@@ -8,7 +8,7 @@ create_clock -period 10.000 -name sysclk_100 -waveform {0.000 5.000} [get_ports 
 create_clock -period 20.000 -name clk_50M -waveform {0.000 10.000} [get_ports clk_50M]
 create_clock -period 90.422 -name clk_11M0592 -waveform {0.000 45.211} [get_ports clk_11M0592]
 
-# GTP clocks 125MHz, 156.25MHz
+# GT clocks 125MHz, 156.25MHz
 set_property PACKAGE_PIN R7 [get_ports gtclk_125_n] ;# MGT_CLK0_N
 set_property PACKAGE_PIN R8 [get_ports gtclk_125_p] ;# MGT_CLK0_P
 set_property PACKAGE_PIN U7 [get_ports gtclk_15625_n] ;# MGT_CLK1_N
