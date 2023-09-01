@@ -233,8 +233,9 @@ set_property -dict {PACKAGE_PIN D16 IOSTANDARD LVCMOS33} [get_ports zynq_lsio[4]
 set_property -dict {PACKAGE_PIN C17 IOSTANDARD LVCMOS33} [get_ports zynq_lsio[5]] ;# LSIO5
 set_property -dict {PACKAGE_PIN F16 IOSTANDARD LVCMOS33} [get_ports zynq_lsio[6]] ;# LSIO6
 set_property -dict {PACKAGE_PIN D17 IOSTANDARD LVCMOS33} [get_ports zynq_lsio[7]] ;# LSIO7
-set_property -dict {PACKAGE_PIN J16 IOSTANDARD LVCMOS33} [get_ports zynq_lsio[8]] ;# LSIO8
-set_property -dict {PACKAGE_PIN E16 IOSTANDARD LVCMOS33} [get_ports zynq_lsio[9]] ;# LSIO9
+set_property -dict {PACKAGE_PIN J16 IOSTANDARD LVCMOS33} [get_ports uart_tx] ;# LSIO8
+set_property -dict {PACKAGE_PIN E16 IOSTANDARD LVCMOS33} [get_ports uart_rx] ;# LSIO9
+set_property PULLUP true [get_ports uart_rx]
 
 # SODIMM
 set_property PACKAGE_PIN AK10 [get_ports ddr3_addr[0]] ;# SO_A0
