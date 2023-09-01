@@ -15,6 +15,9 @@ module tanlabs
 
     output wire [15:0] led,
 
+    output wire uart_tx,
+    input wire uart_rx,
+
     // SFP:
     // +-+-+
     // |0|2|
@@ -97,6 +100,8 @@ module tanlabs
     wire [4:0] debug_ingress_interconnect_ready;
     wire debug_datapath_fifo_ready;
     wire debug_egress_interconnect_ready;
+
+    assign uart_tx = uart_rx;
 
     wire reset_in = RST;
     wire locked;
