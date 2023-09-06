@@ -115,7 +115,7 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
-      <File Path="$PSRCDIR/sources_1/ip/mig_7series_0_1/mig_a.prj">
+      <File Path="$PSRCDIR/sources_1/ip/mig_7series_0/mig_a.prj">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="ScopedToCell" Val="mig_7series_0"/>
@@ -456,7 +456,7 @@
       </Config>
     </FileSet>
     <FileSet Name="clk_wiz_1" Type="BlockSrcs" RelSrcDir="$PSRCDIR/clk_wiz_1">
-      <File Path="$PSRCDIR/sources_1/ip/clk_wiz_1_1/clk_wiz_1.xci">
+      <File Path="$PSRCDIR/sources_1/ip/clk_wiz_1/clk_wiz_1.xci">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
@@ -469,7 +469,7 @@
       </Config>
     </FileSet>
     <FileSet Name="mig_7series_0" Type="BlockSrcs" RelSrcDir="$PSRCDIR/mig_7series_0">
-      <File Path="$PSRCDIR/sources_1/ip/mig_7series_0_1/mig_7series_0.xci">
+      <File Path="$PSRCDIR/sources_1/ip/mig_7series_0/mig_7series_0.xci">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
