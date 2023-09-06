@@ -34,7 +34,25 @@ module tanlabs
 
     // I2C for SFP, unused.
     input wire sfp_sda,
-    input wire sfp_scl
+    input wire sfp_scl,
+
+    // SODIMM.
+    inout [63:0] ddr3_dq,
+    inout [7:0] ddr3_dqs_n,
+    inout [7:0] ddr3_dqs_p,
+
+    output [15:0] ddr3_addr,
+    output [2:0] ddr3_ba,
+    output ddr3_ras_n,
+    output ddr3_cas_n,
+    output ddr3_we_n,
+    output ddr3_reset_n,
+    output [0:0] ddr3_ck_p,
+    output [0:0] ddr3_ck_n,
+    output [0:0] ddr3_cke,
+    output [0:0] ddr3_cs_n,
+    output [7:0] ddr3_dm,
+    output [0:0] ddr3_odt
 );
 
     localparam DATA_WIDTH = 64;
@@ -47,21 +65,30 @@ module tanlabs
     assign uart_tx = uart_rx;
 
     wire reset_in = RST;
-    wire locked;
+    wire locked0, locked1;
     wire gtref_clk;  // 125MHz for the PHY/MAC IP core
     wire ref_clk;  // 200MHz for the PHY/MAC IP core
-    wire core_clk;  // README: This is for CPU and other components. You can change the frequency
-    // by re-customizing the following IP core.
+    wire mig_clk;  // 250MHz for the DRAM controller
 
     clk_wiz_0 clk_wiz_0_i(
         .ref_clk_out(ref_clk),
-        .core_clk_out(core_clk),
+        .mig_clk_out(mig_clk),
         .reset(1'b0),
-        .locked(locked),
+        .locked(locked0),
         .clk_in1(gtref_clk)
     );
 
-    wire reset_not_sync = reset_in || !locked;  // reset components
+    wire core_clk;  // README: This is for CPU and other components. You can change the frequency
+    // by re-customizing the following IP core.
+
+    clk_wiz_1 clk_wiz_1_i(
+        .core_clk_out(core_clk),
+        .reset(1'b0),
+        .locked(locked1),
+        .clk_in1(gtref_clk)
+    );
+
+    wire reset_not_sync = reset_in || !locked0 || !locked1;  // reset components
 
     wire mmcm_locked_out;
     wire rxuserclk_out;
@@ -791,7 +818,70 @@ module tanlabs
                  ~debug_ingress_interconnect_ready}),
         .out_led(led[7:0])
     );
-    assign led[15:8] = 0;
+    assign led[15:9] = 0;
+
+    // README: DRAM Controller.
+    localparam DRAM_READ = 3'b001;
+    localparam DRAM_WRITE = 3'b000;
+
+    wire init_calib_complete;
+    wire dram_clk, reset_dram;
+    wire [28:0] app_addr = 0;
+    wire [2:0] app_cmd = DRAM_READ;
+    wire app_en = 0;
+    wire app_rdy;
+    wire [511:0] app_wdf_data = 0;
+    wire app_wdf_end = 0;
+    wire app_wdf_wren = 0;
+    wire [63:0] app_wdf_mask = 0;
+    wire app_wdf_rdy;
+    wire [511:0] app_rd_data;
+    wire app_rd_data_valid;
+    mig_7series_0 u_mig_7series_0(
+        .ddr3_addr(ddr3_addr),
+        .ddr3_ba(ddr3_ba),
+        .ddr3_cas_n(ddr3_cas_n),
+        .ddr3_ck_n(ddr3_ck_n),
+        .ddr3_ck_p(ddr3_ck_p),
+        .ddr3_cke(ddr3_cke),
+        .ddr3_ras_n(ddr3_ras_n),
+        .ddr3_reset_n(ddr3_reset_n),
+        .ddr3_we_n(ddr3_we_n),
+        .ddr3_dq(ddr3_dq),
+        .ddr3_dqs_n(ddr3_dqs_n),
+        .ddr3_dqs_p(ddr3_dqs_p),
+        .ddr3_cs_n(ddr3_cs_n),
+        .ddr3_dm(ddr3_dm),
+        .ddr3_odt(ddr3_odt),
+
+        .ui_clk(dram_clk),
+        .ui_clk_sync_rst(reset_dram),
+        .app_addr({1'b0, app_addr}),
+        .app_cmd(app_cmd),
+        .app_en(app_en),
+        .app_rdy(app_rdy),
+        .app_wdf_data(app_wdf_data),
+        .app_wdf_end(app_wdf_end),
+        .app_wdf_wren(app_wdf_wren),
+        .app_wdf_mask(app_wdf_mask),
+        .app_wdf_rdy(app_wdf_rdy),
+        .app_rd_data(app_rd_data),
+        .app_rd_data_end(),
+        .app_rd_data_valid(app_rd_data_valid),
+
+        .app_sr_req(1'b0),
+        .app_ref_req(1'b0),
+        .app_zq_req(1'b0),
+        .app_sr_active(),
+        .app_ref_ack(),
+        .app_zq_ack(),
+
+        .sys_clk_i(mig_clk),
+        .clk_ref_i(ref_clk),
+        .sys_rst(reset_not_sync),
+        .init_calib_complete(init_calib_complete)
+    );
+    assign led[8] = init_calib_complete;
 
     // README: You may use this to reset your CPU.
     wire reset_core;
