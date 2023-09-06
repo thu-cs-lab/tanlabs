@@ -25,7 +25,7 @@
 
   <SystemClock>No Buffer</SystemClock>
 
-  <ReferenceClock>Use System Clock</ReferenceClock>
+  <ReferenceClock>No Buffer</ReferenceClock>
 
   <SysResetPolarity>ACTIVE HIGH</SysResetPolarity>
 
@@ -43,12 +43,12 @@
 
   <Controller number="0">
     <MemoryDevice>DDR3_SDRAM/SODIMMs/MT8KTF51264HZ-1G6</MemoryDevice>
-    <TimePeriod>1875</TimePeriod>
+    <TimePeriod>1500</TimePeriod>
     <VccAuxIO>2.0V</VccAuxIO>
-    <PHYRatio>2:1</PHYRatio>
-    <InputClkFreq>200</InputClkFreq>
+    <PHYRatio>4:1</PHYRatio>
+    <InputClkFreq>250</InputClkFreq>
     <UIExtraClocks>0</UIExtraClocks>
-    <MMCM_VCO>1066</MMCM_VCO>
+    <MMCM_VCO>666</MMCM_VCO>
     <MMCMClkOut0> 1.000</MMCMClkOut0>
     <MMCMClkOut1>1</MMCMClkOut1>
     <MMCMClkOut2>1</MMCMClkOut2>
@@ -60,8 +60,8 @@
     <ECC>Disabled</ECC>
     <Ordering>Normal</Ordering>
     <BankMachineCnt>4</BankMachineCnt>
-    <CustomPart>FALSE</CustomPart>
-    <NewPartName/>
+    <CustomPart>TRUE</CustomPart>
+    <NewPartName>ADATA</NewPartName>
     <RowAddress>16</RowAddress>
     <ColAddress>10</ColAddress>
     <BankAddress>3</BankAddress>
@@ -211,11 +211,11 @@
       <Pin Bank="Select Bank" PADName="No connect" name="tg_compare_error"/>
     </System_Control>
     <TimingParameters>
-      <Parameters tcke="5" tfaw="30" tras="35" trcd="13.75" trefi="7.8" trfc="260" trp="13.75" trrd="6" trtp="7.5" twtr="7.5"/>
+      <Parameters tcke="5" tfaw="30" tras="35" trcd="13.125" trefi="7.8" trfc="260" trp="13.125" trrd="6" trtp="7.5" twtr="7.5"/>
     </TimingParameters>
     <mrBurstLength name="Burst Length">8 - Fixed</mrBurstLength>
     <mrBurstType name="Read Burst Type and Length">Sequential</mrBurstType>
-    <mrCasLatency name="CAS Latency">7</mrCasLatency>
+    <mrCasLatency name="CAS Latency">9</mrCasLatency>
     <mrMode name="Mode">Normal</mrMode>
     <mrDllReset name="DLL Reset">No</mrDllReset>
     <mrPdMode name="DLL control for precharge PD">Slow Exit</mrPdMode>
@@ -229,7 +229,7 @@
     <emrDQS name="TDQS enable">Enabled</emrDQS>
     <emrRDQS name="Qoff">Output Buffer Enabled</emrRDQS>
     <mr2PartialArraySelfRefresh name="Partial-Array Self Refresh">Full Array</mr2PartialArraySelfRefresh>
-    <mr2CasWriteLatency name="CAS write latency">6</mr2CasWriteLatency>
+    <mr2CasWriteLatency name="CAS write latency">7</mr2CasWriteLatency>
     <mr2AutoSelfRefresh name="Auto Self Refresh">Enabled</mr2AutoSelfRefresh>
     <mr2SelfRefreshTempRange name="High Temparature Self Refresh Rate">Normal</mr2SelfRefreshTempRange>
     <mr2RTTWR name="RTT_WR - Dynamic On Die Termination (ODT)">Dynamic ODT off</mr2RTTWR>

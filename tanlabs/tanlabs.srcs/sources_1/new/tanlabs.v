@@ -104,23 +104,32 @@ module tanlabs
     assign uart_tx = uart_rx;
 
     wire reset_in = RST;
-    wire locked;
+    wire locked0, locked1;
     wire gtref_clk;  // 125MHz for the PHY/MAC IP core
     wire ref_clk;  // 200MHz for the PHY/MAC IP core
-    wire core_clk;  // README: This is for CPU and other components. You can change the frequency
-    // by re-customizing the following IP core.
+    wire mig_clk;  // 250MHz for the DRAM controller
     wire ram_clk;
 
     clk_wiz_0 clk_wiz_0_i(
         .ref_clk_out(ref_clk),
-        .core_clk_out(core_clk),
+        .mig_clk_out(mig_clk),
         .ram_clk_out(ram_clk),
         .reset(1'b0),
-        .locked(locked),
+        .locked(locked0),
         .clk_in1(gtref_clk)
     );
 
-    wire reset_not_sync = reset_in || !locked;  // reset components
+    wire core_clk;  // README: This is for CPU and other components. You can change the frequency
+    // by re-customizing the following IP core.
+
+    clk_wiz_1 clk_wiz_1_i(
+        .core_clk_out(core_clk),
+        .reset(1'b0),
+        .locked(locked1),
+        .clk_in1(gtref_clk)
+    );
+
+    wire reset_not_sync = reset_in || !locked0 || !locked1;  // reset components
 
     wire mmcm_locked_out;
     wire rxuserclk_out;
@@ -941,7 +950,8 @@ module tanlabs
         .app_ref_ack(),
         .app_zq_ack(),
 
-        .sys_clk_i(ref_clk),
+        .sys_clk_i(mig_clk),
+        .clk_ref_i(ref_clk),
         .sys_rst(reset_in),
         .init_calib_complete(init_calib_complete)
     );
@@ -949,7 +959,7 @@ module tanlabs
     localparam DRAM_READ = 3'b001;
     localparam DRAM_WRITE = 3'b000;
     localparam DRAM_MAX_ADDR = 29'h1ffffff8;
-    localparam DRAM_FREQ = 133333333;
+    localparam DRAM_FREQ = 166666667;
 
     reg [28:0] dram_addr;
 
