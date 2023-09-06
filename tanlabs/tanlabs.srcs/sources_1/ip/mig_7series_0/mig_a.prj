@@ -44,7 +44,7 @@
   <Controller number="0">
     <MemoryDevice>DDR3_SDRAM/SODIMMs/MT8KTF51264HZ-1G6</MemoryDevice>
     <TimePeriod>1500</TimePeriod>
-    <VccAuxIO>2.0V</VccAuxIO>
+    <VccAuxIO>1.8V</VccAuxIO>
     <PHYRatio>4:1</PHYRatio>
     <InputClkFreq>250</InputClkFreq>
     <UIExtraClocks>0</UIExtraClocks>

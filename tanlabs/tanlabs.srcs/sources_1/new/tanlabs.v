@@ -898,8 +898,11 @@ module tanlabs
     end
 
     // DRAM Test.
+    localparam DRAM_READ = 3'b001;
+    localparam DRAM_WRITE = 3'b000;
+
     wire init_calib_complete;
-    wire dram_clk, dram_rst;
+    wire dram_clk, reset_dram;
     (* mark_debug="true" *) reg [28:0] app_addr;
     (* mark_debug="true" *) reg [2:0] app_cmd;
     (* mark_debug="true" *) reg app_en;
@@ -929,7 +932,7 @@ module tanlabs
         .ddr3_odt(ddr3_odt),
 
         .ui_clk(dram_clk),
-        .ui_clk_sync_rst(dram_rst),
+        .ui_clk_sync_rst(reset_dram),
         .app_addr({1'b0, app_addr}),
         .app_cmd(app_cmd),
         .app_en(app_en),
@@ -952,12 +955,10 @@ module tanlabs
 
         .sys_clk_i(mig_clk),
         .clk_ref_i(ref_clk),
-        .sys_rst(reset_in),
+        .sys_rst(reset_not_sync),
         .init_calib_complete(init_calib_complete)
     );
 
-    localparam DRAM_READ = 3'b001;
-    localparam DRAM_WRITE = 3'b000;
     localparam DRAM_MAX_ADDR = 29'h1ffffff8;
     localparam DRAM_FREQ = 166666667;
 
@@ -993,9 +994,9 @@ module tanlabs
     wire dram_wdata_ack = dram_wdata_acked || dram_wdata_fire;
     reg [31:0] dram_wdt;
 
-    always @ (posedge dram_clk or posedge dram_rst)
+    always @ (posedge dram_clk or posedge reset_dram)
     begin
-        if (dram_rst)
+        if (reset_dram)
         begin
             dram_pass <= 1'b0;
             dram_state <= ST_WRITE;
