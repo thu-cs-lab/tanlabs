@@ -6,8 +6,8 @@ Tsinghua Advanced Networking Labs
 
 * `tanlabs`：硬件路由器实验框架
 * `firmware`：运行在CPU上的软件的框架（固件框架）
-* `ibert_7series_gtp_1.25G_ex`：1.25Gbps的IBERT测试工具
-* `ibert_7series_gtp_6.25G_ex`：6.25Gbps的IBERT测试工具
+* `ibert_7series_gtx_1.25G_ex`：1.25Gbps的IBERT测试工具
+* `ibert_7series_gtx_10.3125G_ex`：10.3125Gbps的IBERT测试工具
 * `figures`：仅供参考的图片
 
 取得实验板后，实验者应当仔细阅读`TEST.md`，并对实验板进行充分测试。
