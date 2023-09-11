@@ -837,50 +837,79 @@ module tanlabs
     wire app_wdf_rdy;
     wire [511:0] app_rd_data;
     wire app_rd_data_valid;
-    mig_7series_0 u_mig_7series_0(
-        .ddr3_addr(ddr3_addr),
-        .ddr3_ba(ddr3_ba),
-        .ddr3_cas_n(ddr3_cas_n),
-        .ddr3_ck_n(ddr3_ck_n),
-        .ddr3_ck_p(ddr3_ck_p),
-        .ddr3_cke(ddr3_cke),
-        .ddr3_ras_n(ddr3_ras_n),
-        .ddr3_reset_n(ddr3_reset_n),
-        .ddr3_we_n(ddr3_we_n),
-        .ddr3_dq(ddr3_dq),
-        .ddr3_dqs_n(ddr3_dqs_n),
-        .ddr3_dqs_p(ddr3_dqs_p),
-        .ddr3_cs_n(ddr3_cs_n),
-        .ddr3_dm(ddr3_dm),
-        .ddr3_odt(ddr3_odt),
+    generate
+        if (!SIM)
+        begin : mig_ip_core
+            mig_7series_0 u_mig_7series_0(
+                .ddr3_addr(ddr3_addr),
+                .ddr3_ba(ddr3_ba),
+                .ddr3_cas_n(ddr3_cas_n),
+                .ddr3_ck_n(ddr3_ck_n),
+                .ddr3_ck_p(ddr3_ck_p),
+                .ddr3_cke(ddr3_cke),
+                .ddr3_ras_n(ddr3_ras_n),
+                .ddr3_reset_n(ddr3_reset_n),
+                .ddr3_we_n(ddr3_we_n),
+                .ddr3_dq(ddr3_dq),
+                .ddr3_dqs_n(ddr3_dqs_n),
+                .ddr3_dqs_p(ddr3_dqs_p),
+                .ddr3_cs_n(ddr3_cs_n),
+                .ddr3_dm(ddr3_dm),
+                .ddr3_odt(ddr3_odt),
 
-        .ui_clk(dram_clk),
-        .ui_clk_sync_rst(reset_dram),
-        .app_addr({1'b0, app_addr}),
-        .app_cmd(app_cmd),
-        .app_en(app_en),
-        .app_rdy(app_rdy),
-        .app_wdf_data(app_wdf_data),
-        .app_wdf_end(app_wdf_end),
-        .app_wdf_wren(app_wdf_wren),
-        .app_wdf_mask(app_wdf_mask),
-        .app_wdf_rdy(app_wdf_rdy),
-        .app_rd_data(app_rd_data),
-        .app_rd_data_end(),
-        .app_rd_data_valid(app_rd_data_valid),
+                .ui_clk(dram_clk),
+                .ui_clk_sync_rst(reset_dram),
+                .app_addr({1'b0, app_addr}),
+                .app_cmd(app_cmd),
+                .app_en(app_en),
+                .app_rdy(app_rdy),
+                .app_wdf_data(app_wdf_data),
+                .app_wdf_end(app_wdf_end),
+                .app_wdf_wren(app_wdf_wren),
+                .app_wdf_mask(app_wdf_mask),
+                .app_wdf_rdy(app_wdf_rdy),
+                .app_rd_data(app_rd_data),
+                .app_rd_data_end(),
+                .app_rd_data_valid(app_rd_data_valid),
 
-        .app_sr_req(1'b0),
-        .app_ref_req(1'b0),
-        .app_zq_req(1'b0),
-        .app_sr_active(),
-        .app_ref_ack(),
-        .app_zq_ack(),
+                .app_sr_req(1'b0),
+                .app_ref_req(1'b0),
+                .app_zq_req(1'b0),
+                .app_sr_active(),
+                .app_ref_ack(),
+                .app_zq_ack(),
 
-        .sys_clk_i(mig_clk),
-        .clk_ref_i(ref_clk),
-        .sys_rst(reset_not_sync),
-        .init_calib_complete(init_calib_complete)
-    );
+                .sys_clk_i(mig_clk),
+                .clk_ref_i(ref_clk),
+                .sys_rst(reset_not_sync),
+                .init_calib_complete(init_calib_complete)
+            );
+        end
+        else
+        begin : mig_model
+            assign dram_clk = eth_clk;
+            assign reset_dram = reset_eth;
+            assign init_calib_complete = 1'b1;
+
+            mig_ui_model mig_ui_model_i(
+                .clk(dram_clk),
+                .reset(reset_dram),
+
+                .app_addr(app_addr),
+                .app_cmd(app_cmd),
+                .app_en(app_en),
+                .app_rdy(app_rdy),
+                .app_wdf_data(app_wdf_data),
+                .app_wdf_end(app_wdf_end),
+                .app_wdf_wren(app_wdf_wren),
+                .app_wdf_mask(app_wdf_mask),
+                .app_wdf_rdy(app_wdf_rdy),
+                .app_rd_data(app_rd_data),
+                .app_rd_data_end(),
+                .app_rd_data_valid(app_rd_data_valid)
+            );
+        end
+    endgenerate
     assign led[8] = init_calib_complete;
 
     // README: You may use this to reset your CPU.
