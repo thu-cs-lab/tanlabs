@@ -51,6 +51,7 @@ typedef struct packed
     ether_hdr data;
     logic [DATAW_WIDTH / 8 - 1:0] keep;
     logic last;
+    // The IP core will use this "user" signal to indicate errors, so do not modify it!
     logic [DATAW_WIDTH / 8 - 1:0] user;
     logic valid;
 

@@ -78,6 +78,13 @@ module frame_datapath_example
     // README: USELESS features :-)
     // You do not have to have exactly 5 stages.
 
+    // Meanings of "ready" signals:
+    //   in_ready:   Are we ready to accept an incoming data beat?
+    //   s{n}_ready: Is Stage n+1 ready to accept the data beat from Stage n, or,
+    //               is the data beat from Stage n a bubble (valid == 1'b0) so that
+    //               Stage n+1 can pretend to be ready and consume this bubble?
+    //   out_ready:  Is our downstream ready to accept a data beat from us?
+
     frame_beat s1;
     wire s1_ready;
     assign in_ready = s1_ready || !in.valid;
@@ -89,10 +96,16 @@ module frame_datapath_example
         end
         else if (s1_ready)
         begin
+            // We can proceed only when the next stage is ready to accept the data beat from this
+            // stage (s1_ready == 1'b1) so that the buffer (s1) is free to store a new data beat
+            // from the previous stage.
+            // Otherwise (s1_ready == 1'b0), we must keep the buffer unchanged and wait for the
+            // next stage, or the current beat will be lost.
+
             s1 <= in;
             if (`should_handle(in))
             begin
-                // We only process the beat that
+                // We only process the beat that (should_handle)
                 //   1) is valid, otherwise its data is **garbage**;
                 //   2) is the first beat of a frame, since only the first beat contains needed
                 //      headers;
