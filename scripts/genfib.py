@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Parse RIBs from https://archive.routeviews.org/route-views6/bgpdata/
+# and generate a shuffled FIB.
+
 import ipaddress
 import json
 import mrtparse
@@ -29,7 +32,7 @@ def cmp_path(a, b):
     return a['peer_index'] < b['peer_index']
 
 rib = []
-for e in tqdm.tqdm(mrtparse.Reader('./rib.20220901.0000.bz2')):
+for e in tqdm.tqdm(mrtparse.Reader('./rib.20231101.0000.bz2')):
     if 'TABLE_DUMP_V2' not in e.data['type'].values() \
        or 'RIB_IPV6_UNICAST' not in e.data['subtype'].values():
         print(e.data['subtype'])
