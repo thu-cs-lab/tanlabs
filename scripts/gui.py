@@ -3,6 +3,7 @@
 import datetime
 import os
 import subprocess
+import sys
 import threading
 import wx
 from client import *
@@ -324,6 +325,7 @@ class MainFrame(wx.Frame):
         self.config['my_ips'] = list(map(str, self.my_ips_parsed))
         self.config['dut_ips'] = list(map(str, self.dut_ips_parsed))
         self.save()
+        self.log(testpath, 'Router Tester started with arguments: ' + ' '.join(sys.argv))
         self.log(testpath, 'Apply Network Configuration')
         for i in range(NINTERFACES):
             self.log(testpath, f'My IP{i + 1}: {self.my_ips_parsed[i]}')

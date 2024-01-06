@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
 
 cd $(dirname $(readlink -f ${0}))
-exec sudo ./scripts/gui.py
+sudo ./scripts/setup ${@:1}
+exec sudo ./scripts/gui.py ${@:1}
