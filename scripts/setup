@@ -1,12 +1,44 @@
 #!/bin/bash
 set -e
 
+# Usage:
+#   ./setup <interface> [# of routes] [update timer] [timeout timer] [garbage timer]
+
 if [ -z "${1}" ]; then
     echo Please specify the main network interface connected to the device.
     exit 1
 fi
-
 IFACE=${1}
+
+if [ -z "${3}" ]; then
+    echo "Using the default update timer (3s)."
+    UPDATE_TIMER=3
+else
+    UPDATE_TIMER=${3}
+fi
+
+if [ -z "${4}" ]; then
+    echo "Using the default timeout timer (30s)."
+    TIMEOUT_TIMER=30
+else
+    TIMEOUT_TIMER=${4}
+fi
+
+if [ -z "${5}" ]; then
+    echo "Using the default garbage timer (60s)."
+    GARBAGE_TIMER=60
+else
+    GARBAGE_TIMER=${5}
+fi
+
+if [ -z "${2}" ]; then
+    echo "Running without RIPng rate limit."
+    LIMIT=
+else
+    echo "Running with RIPng rate limit:"
+    LIMIT=`./scripts/calc-tc.py ${2} ${UPDATE_TIMER}`
+fi
+
 . $(dirname $(readlink -f ${0}))/conf
 
 function gen_bird {
@@ -57,9 +89,9 @@ protocol rip ng {
     };
     #debug all;
     interface "${iface}" {
-        update time 20;
-        timeout time 60;
-        garbage time 60;
+        update time ${UPDATE_TIMER};
+        timeout time ${TIMEOUT_TIMER};
+        garbage time ${GARBAGE_TIMER};
     };
 }
 EOF
@@ -80,7 +112,9 @@ for ((i=0; i < ${NINTERFACES}; i++)) do
     ip netns exec ${NETNS_PREFIX}${i} ip link set lo up
     ip netns exec ${NETNS_PREFIX}${i} ip link set ${IFACE_PREFIX}${i} up
     ip netns exec ${NETNS_PREFIX}${i} ip addr
-    ip netns exec ${NETNS_PREFIX}${i} ./scripts/setup-tc ${IFACE_PREFIX}${i}
+    if [ ! -z "${LIMIT}" ]; then
+        ip netns exec ${NETNS_PREFIX}${i} ./scripts/setup-tc ${IFACE_PREFIX}${i} ${LIMIT}
+    fi
     gen_bird ${i} ${IFACE_PREFIX}${i}
 done
 
