@@ -32,7 +32,7 @@ def cmp_path(a, b):
     return a['peer_index'] < b['peer_index']
 
 rib = []
-for e in tqdm.tqdm(mrtparse.Reader('./rib.20231101.0000.bz2')):
+for e in tqdm.tqdm(mrtparse.Reader('./rib.20241024.1200.bz2')):
     if 'TABLE_DUMP_V2' not in e.data['type'].values() \
        or 'RIB_IPV6_UNICAST' not in e.data['subtype'].values():
         print(e.data['subtype'])
